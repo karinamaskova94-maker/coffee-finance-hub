@@ -15,6 +15,10 @@ const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('dashboard');
 
+  const handleNavigate = (tab: string) => {
+    setActiveTab(tab);
+  };
+
   const renderContent = () => {
     switch (activeTab) {
       case 'history':
@@ -34,6 +38,44 @@ const Dashboard = () => {
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-4">Settings</h2>
             <SettingsPanel />
+          </section>
+        );
+      case 'reports':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Reports</h2>
+            <div className="grid gap-4">
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h3 className="font-medium text-foreground mb-2">Tax Summary Report</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  View your tax savings and liability breakdown by category.
+                </p>
+                <div className="text-2xl font-bold text-primary">Coming Soon</div>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h3 className="font-medium text-foreground mb-2">COGS vs Supplies</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Monthly breakdown of food costs versus supply purchases.
+                </p>
+                <div className="text-2xl font-bold text-primary">Coming Soon</div>
+              </div>
+              <div className="bg-card rounded-xl border border-border p-6">
+                <h3 className="font-medium text-foreground mb-2">Export Data</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Download your receipts as CSV for accounting software.
+                </p>
+                <div className="text-2xl font-bold text-primary">Coming Soon</div>
+              </div>
+            </div>
+          </section>
+        );
+      case 'profile':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4">My Profile</h2>
+            <div className="bg-card rounded-xl border border-border p-6">
+              <p className="text-muted-foreground">Profile settings coming soon.</p>
+            </div>
           </section>
         );
       default:
@@ -142,9 +184,9 @@ const Dashboard = () => {
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
       <div className="flex-1 flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} />
+        <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} />
         
-        <main className="flex-1 p-4 sm:p-6 overflow-auto pb-20 lg:pb-6">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto pb-24 lg:pb-6">
           {renderContent()}
         </main>
       </div>

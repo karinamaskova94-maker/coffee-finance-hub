@@ -1,12 +1,14 @@
-import { RefreshCw, Bell, ChevronDown, Menu } from 'lucide-react';
+import { RefreshCw, Bell, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StoreSwitcher from './StoreSwitcher';
+import UserMenu from './UserMenu';
 
 interface HeaderProps {
   onMenuClick: () => void;
+  onNavigate?: (tab: string) => void;
 }
 
-const Header = ({ onMenuClick }: HeaderProps) => {
+const Header = ({ onMenuClick, onNavigate }: HeaderProps) => {
   return (
     <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6">
       <div className="flex items-center gap-3">
@@ -52,13 +54,8 @@ const Header = ({ onMenuClick }: HeaderProps) => {
           <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-destructive" />
         </Button>
 
-        {/* Profile */}
-        <button className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl hover:bg-accent transition-colors">
-          <div className="w-8 h-8 rounded-full bg-primary/15 flex items-center justify-center">
-            <span className="text-sm font-medium text-primary">SC</span>
-          </div>
-          <ChevronDown className="w-4 h-4 text-muted-foreground hidden sm:block" />
-        </button>
+        {/* User Profile Dropdown */}
+        <UserMenu onNavigate={onNavigate} />
       </div>
     </header>
   );
