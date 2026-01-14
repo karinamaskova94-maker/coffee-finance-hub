@@ -226,6 +226,92 @@ export type Database = {
           },
         ]
       }
+      stocktake_items: {
+        Row: {
+          created_at: string
+          expected_quantity: number
+          id: string
+          inventory_item_id: string
+          physical_count: number
+          stocktake_id: string
+          variance: number | null
+        }
+        Insert: {
+          created_at?: string
+          expected_quantity?: number
+          id?: string
+          inventory_item_id: string
+          physical_count?: number
+          stocktake_id: string
+          variance?: number | null
+        }
+        Update: {
+          created_at?: string
+          expected_quantity?: number
+          id?: string
+          inventory_item_id?: string
+          physical_count?: number
+          stocktake_id?: string
+          variance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocktake_items_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "stocktake_items_stocktake_id_fkey"
+            columns: ["stocktake_id"]
+            isOneToOne: false
+            referencedRelation: "stocktakes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stocktakes: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          status: string
+          stocktake_date: string
+          store_id: string | null
+          user_id: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          stocktake_date?: string
+          store_id?: string | null
+          user_id: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          status?: string
+          stocktake_date?: string
+          store_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "stocktakes_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       stores: {
         Row: {
           address: string | null

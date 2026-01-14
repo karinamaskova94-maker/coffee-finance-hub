@@ -23,6 +23,7 @@ import { useStore } from '@/contexts/StoreContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { IngredientMapper } from '@/components/receipt/IngredientMapper';
 
 interface ExtractedData {
   merchant: string;
@@ -34,6 +35,12 @@ interface ExtractedData {
   nonTaxableAmount: number;
   category: 'cogs' | 'supplies' | 'mixed';
   hasTaxSavings: boolean;
+  rawItems?: Array<{
+    name: string;
+    price: number;
+    taxCode: string;
+    isTaxable: boolean;
+  }>;
 }
 
 const CATEGORIES = [
@@ -46,10 +53,27 @@ const CATEGORIES = [
   { value: 'other', label: 'Other' },
 ];
 
-const ReceiptScanner = () => {
+// Base64 decode helper
+function decode(base64: string): Uint8Array {
+  const binaryString = atob(base64);
+  const bytes = new Uint8Array(binaryString.length);
+  for (let i = 0; i < binaryString.length; i++) {
+    bytes[i] = binaryString.charCodeAt(i);
+  }
+  return bytes;
+}
+
+interface ReceiptScannerProps {
+  variant?: 'default' | 'large';
+  onScanStart?: () => void;
+}
+
+const ReceiptScanner = ({ variant = 'default', onScanStart }: ReceiptScannerProps) => {
   const [isScanning, setIsScanning] = useState(false);
   const [isConfirmOpen, setIsConfirmOpen] = useState(false);
   const [capturedImage, setCapturedImage] = useState<string | null>(null);
+  const [savedReceiptId, setSavedReceiptId] = useState<string | null>(null);
+  const [showMapper, setShowMapper] = useState(false);
   const [extractedData, setExtractedData] = useState<ExtractedData>({
     merchant: '',
     total: '',
@@ -73,7 +97,6 @@ const ReceiptScanner = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Use Gemini AI via edge function for OCR
   const performOCR = async (imageData: string): Promise<ExtractedData> => {
     try {
       const response = await supabase.functions.invoke('scan-receipt', {
@@ -103,10 +126,10 @@ const ReceiptScanner = () => {
         nonTaxableAmount: data.nonTaxableAmount || 0,
         category: data.category || 'cogs',
         hasTaxSavings: data.hasTaxSavings || false,
+        rawItems: data.rawItems || [],
       };
     } catch (error) {
       console.error('OCR Error:', error);
-      // Return empty data so user can fill manually
       return {
         merchant: '',
         total: '',
@@ -123,7 +146,6 @@ const ReceiptScanner = () => {
 
   const calculateTax = (total: string, taxRate: number, isFood: boolean): string => {
     if (isFood) return '0.00';
-    
     const totalAmount = parseFloat(total) || 0;
     const taxAmount = totalAmount - (totalAmount / (1 + taxRate / 100));
     return taxAmount.toFixed(2);
@@ -131,6 +153,7 @@ const ReceiptScanner = () => {
 
   const handleCapture = async (file: File) => {
     setIsScanning(true);
+    onScanStart?.();
     
     const reader = new FileReader();
     reader.onload = async (e) => {
@@ -211,7 +234,6 @@ const ReceiptScanner = () => {
         }
       }
 
-      // Determine final category based on tax savings logic
       let finalCategory = category;
       const isCostco = extractedData.merchant.toLowerCase().includes('costco');
       const taxAmount = parseFloat(extractedData.tax) || 0;
@@ -224,7 +246,7 @@ const ReceiptScanner = () => {
         }
       }
 
-      const { error } = await supabase.from('receipts').insert({
+      const { data: receiptData, error } = await supabase.from('receipts').insert({
         user_id: user.id,
         store_id: currentStore.id,
         vendor_name: extractedData.merchant,
@@ -236,34 +258,23 @@ const ReceiptScanner = () => {
         image_url: imageUrl,
         status: 'pending',
         notes: hasTaxSavings ? 'Tax savings identified - food items exempt' : null,
-      });
+      }).select().single();
 
       if (error) throw error;
 
+      setSavedReceiptId(receiptData.id);
+
       toast({
         title: 'Receipt Saved',
-        description: hasTaxSavings 
-          ? `$${extractedData.total} from ${extractedData.merchant} saved with tax savings!`
-          : `$${extractedData.total} from ${extractedData.merchant} added successfully.`,
+        description: `$${extractedData.total} from ${extractedData.merchant} added successfully.`,
       });
 
-      // Reset state
-      setIsConfirmOpen(false);
-      setCapturedImage(null);
-      setExtractedData({
-        merchant: '',
-        total: '',
-        tax: '',
-        date: new Date().toISOString().split('T')[0],
-        isFoodItem: false,
-        taxableAmount: 0,
-        nonTaxableAmount: 0,
-        category: 'cogs',
-        hasTaxSavings: false,
-      });
-      setCategory('cogs');
-      setIsFoodItem(false);
-      setHasTaxSavings(false);
+      // Show ingredient mapper if we have scanned items
+      if (extractedData.rawItems && extractedData.rawItems.length > 0) {
+        setShowMapper(true);
+      } else {
+        handleClose();
+      }
     } catch (error) {
       console.error('Save error:', error);
       toast({
@@ -276,6 +287,27 @@ const ReceiptScanner = () => {
     }
   };
 
+  const handleClose = () => {
+    setIsConfirmOpen(false);
+    setCapturedImage(null);
+    setSavedReceiptId(null);
+    setShowMapper(false);
+    setExtractedData({
+      merchant: '',
+      total: '',
+      tax: '',
+      date: new Date().toISOString().split('T')[0],
+      isFoodItem: false,
+      taxableAmount: 0,
+      nonTaxableAmount: 0,
+      category: 'cogs',
+      hasTaxSavings: false,
+    });
+    setCategory('cogs');
+    setIsFoodItem(false);
+    setHasTaxSavings(false);
+  };
+
   const handleFoodToggle = (checked: boolean) => {
     setIsFoodItem(checked);
     if (extractedData.total) {
@@ -283,11 +315,12 @@ const ReceiptScanner = () => {
       setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
       setHasTaxSavings(checked && parseFloat(extractedData.total) > 0);
     }
-    // Auto-set category based on food toggle
     if (checked) {
       setCategory('cogs');
     }
   };
+
+  const isLarge = variant === 'large';
 
   return (
     <>
@@ -307,218 +340,198 @@ const ReceiptScanner = () => {
         onChange={handleFileChange}
       />
 
-      <Button
-        onClick={() => cameraInputRef.current?.click()}
-        className="gap-2 bg-primary hover:bg-primary/90"
-        disabled={isScanning}
-      >
-        {isScanning ? (
-          <>
-            <Sparkles className="w-4 h-4 animate-pulse" />
-            AI Scanning...
-          </>
-        ) : (
-          <>
-            <Camera className="w-4 h-4" />
-            Scan Receipt
-          </>
-        )}
-      </Button>
+      {isLarge ? (
+        <Button
+          onClick={() => cameraInputRef.current?.click()}
+          className="h-32 flex-1 flex flex-col items-center justify-center gap-3 text-lg font-semibold bg-primary hover:bg-primary/90 shadow-lg"
+          disabled={isScanning}
+        >
+          {isScanning ? (
+            <>
+              <Sparkles className="w-10 h-10 animate-pulse" />
+              <span>AI Scanning...</span>
+            </>
+          ) : (
+            <>
+              <Camera className="w-10 h-10" />
+              <span>Scan Receipt</span>
+            </>
+          )}
+        </Button>
+      ) : (
+        <>
+          <Button
+            onClick={() => cameraInputRef.current?.click()}
+            className="gap-2 bg-primary hover:bg-primary/90"
+            disabled={isScanning}
+          >
+            {isScanning ? (
+              <>
+                <Sparkles className="w-4 h-4 animate-pulse" />
+                AI Scanning...
+              </>
+            ) : (
+              <>
+                <Camera className="w-4 h-4" />
+                Scan Receipt
+              </>
+            )}
+          </Button>
 
-      <Button
-        variant="outline"
-        onClick={() => fileInputRef.current?.click()}
-        className="gap-2"
-        disabled={isScanning}
-      >
-        <Upload className="w-4 h-4" />
-        Upload
-      </Button>
+          <Button
+            variant="outline"
+            onClick={() => fileInputRef.current?.click()}
+            className="gap-2"
+            disabled={isScanning}
+          >
+            <Upload className="w-4 h-4" />
+            Upload
+          </Button>
+        </>
+      )}
 
-      <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
+      <Dialog open={isConfirmOpen} onOpenChange={(open) => !open && handleClose()}>
         <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-primary" />
-              Confirm Receipt Data
-              {hasTaxSavings && (
+              {showMapper ? 'Map to Inventory' : 'Confirm Receipt Data'}
+              {hasTaxSavings && !showMapper && (
                 <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 border-green-200">
                   <Leaf className="w-3 h-3 mr-1" />
-                  Tax Savings
+                  COGS
                 </Badge>
               )}
             </DialogTitle>
           </DialogHeader>
 
-          <div className="grid gap-4 py-4">
-            {capturedImage && (
-              <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
-                <img
-                  src={capturedImage}
-                  alt="Captured receipt"
-                  className="w-full h-full object-contain"
-                />
-              </div>
-            )}
+          {showMapper && savedReceiptId && extractedData.rawItems ? (
+            <IngredientMapper
+              scannedItems={extractedData.rawItems}
+              receiptId={savedReceiptId}
+              onComplete={handleClose}
+            />
+          ) : (
+            <>
+              <div className="grid gap-4 py-4">
+                {capturedImage && (
+                  <div className="relative aspect-video rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={capturedImage}
+                      alt="Captured receipt"
+                      className="w-full h-full object-contain"
+                    />
+                  </div>
+                )}
 
-            {/* Tax Savings Banner */}
-            {hasTaxSavings && (
-              <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
-                <div className="p-2 rounded-full bg-green-100">
-                  <Leaf className="w-5 h-5 text-green-600" />
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="merchant">Merchant</Label>
+                    <Input
+                      id="merchant"
+                      value={extractedData.merchant}
+                      onChange={(e) => setExtractedData(prev => ({ ...prev, merchant: e.target.value }))}
+                      placeholder="e.g., Costco"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="date">Date</Label>
+                    <Input
+                      id="date"
+                      type="date"
+                      value={extractedData.date}
+                      onChange={(e) => setExtractedData(prev => ({ ...prev, date: e.target.value }))}
+                    />
+                  </div>
                 </div>
-                <div>
-                  <p className="font-medium text-green-800">Tax Savings Identified!</p>
-                  <p className="text-sm text-green-600">
-                    Food items detected without tax. Categorized as COGS.
-                  </p>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="total">Total Amount ($)</Label>
+                    <Input
+                      id="total"
+                      type="number"
+                      step="0.01"
+                      value={extractedData.total}
+                      onChange={(e) => {
+                        setExtractedData(prev => ({ ...prev, total: e.target.value }));
+                        const calculatedTax = calculateTax(e.target.value, currentStore?.state_tax_rate || 9.5, isFoodItem);
+                        setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
+                      }}
+                      placeholder="0.00"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="tax">Tax Amount ($)</Label>
+                    <Input
+                      id="tax"
+                      type="number"
+                      step="0.01"
+                      value={extractedData.tax}
+                      onChange={(e) => setExtractedData(prev => ({ ...prev, tax: e.target.value }))}
+                      placeholder="0.00"
+                    />
+                  </div>
                 </div>
-              </div>
-            )}
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="merchant">Merchant</Label>
-                <Input
-                  id="merchant"
-                  value={extractedData.merchant}
-                  onChange={(e) => setExtractedData(prev => ({ ...prev, merchant: e.target.value }))}
-                  placeholder="e.g., Costco"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="date">Date</Label>
-                <Input
-                  id="date"
-                  type="date"
-                  value={extractedData.date}
-                  onChange={(e) => setExtractedData(prev => ({ ...prev, date: e.target.value }))}
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="total">Total Amount ($)</Label>
-                <Input
-                  id="total"
-                  type="number"
-                  step="0.01"
-                  value={extractedData.total}
-                  onChange={(e) => {
-                    setExtractedData(prev => ({ ...prev, total: e.target.value }));
-                    const calculatedTax = calculateTax(e.target.value, currentStore?.state_tax_rate || 9.5, isFoodItem);
-                    setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
-                  }}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="tax">Tax Amount ($)</Label>
-                <Input
-                  id="tax"
-                  type="number"
-                  step="0.01"
-                  value={extractedData.tax}
-                  onChange={(e) => setExtractedData(prev => ({ ...prev, tax: e.target.value }))}
-                  placeholder="0.00"
-                />
-              </div>
-            </div>
-
-            {/* Split amounts for mixed purchases */}
-            {extractedData.merchant.toLowerCase().includes('costco') && 
-             extractedData.taxableAmount > 0 && extractedData.nonTaxableAmount > 0 && (
-              <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/50">
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Taxable (Supplies)</p>
-                  <p className="text-lg font-semibold">${extractedData.taxableAmount.toFixed(2)}</p>
+                <div className="space-y-2">
+                  <Label htmlFor="category">Category</Label>
+                  <Select value={category} onValueChange={setCategory}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Select category" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {CATEGORIES.map((cat) => (
+                        <SelectItem key={cat.value} value={cat.value}>
+                          {cat.label}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-                <div className="text-center">
-                  <p className="text-xs text-muted-foreground">Tax-Free (COGS)</p>
-                  <p className="text-lg font-semibold text-green-600">${extractedData.nonTaxableAmount.toFixed(2)}</p>
-                </div>
-              </div>
-            )}
 
-            <div className="space-y-2">
-              <Label htmlFor="category">Category</Label>
-              <Select value={category} onValueChange={setCategory}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select category" />
-                </SelectTrigger>
-                <SelectContent>
-                  {CATEGORIES.map((cat) => (
-                    <SelectItem key={cat.value} value={cat.value}>
-                      {cat.label}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
-              <Checkbox
-                id="foodItem"
-                checked={isFoodItem}
-                onCheckedChange={handleFoodToggle}
-              />
-              <div className="flex-1">
-                <Label htmlFor="foodItem" className="cursor-pointer font-medium">
-                  Food/Grocery Item (Tax Exempt)
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  Check if this is for tax-exempt food items (CA sales tax doesn't apply)
-                </p>
-              </div>
-            </div>
-
-            {extractedData.merchant.toLowerCase().includes('costco') && !isFoodItem && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
-                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
-                <div className="text-sm">
-                  <p className="font-medium text-amber-800">Costco Tax Calculation</p>
-                  <p className="text-amber-700 mt-0.5">
-                    Tax calculated at {currentStore?.state_tax_rate || 9.5}% (CA average).
-                    Items marked 'E' or 'F' on receipt are tax-exempt food.
-                  </p>
+                <div className="flex items-center space-x-3 p-3 rounded-lg bg-muted/50">
+                  <Checkbox
+                    id="foodItem"
+                    checked={isFoodItem}
+                    onCheckedChange={handleFoodToggle}
+                  />
+                  <div className="flex-1">
+                    <Label htmlFor="foodItem" className="cursor-pointer font-medium">
+                      Food/Grocery Item (COGS)
+                    </Label>
+                    <p className="text-xs text-muted-foreground mt-0.5">
+                      Check if this is for food ingredients (adds to Cost of Goods Sold)
+                    </p>
+                  </div>
                 </div>
               </div>
-            )}
-          </div>
 
-          <DialogFooter className="gap-2">
-            <Button variant="outline" onClick={() => setIsConfirmOpen(false)}>
-              <X className="w-4 h-4 mr-2" />
-              Cancel
-            </Button>
-            <Button onClick={handleSaveReceipt} disabled={isSaving || !extractedData.merchant || !extractedData.total}>
-              {isSaving ? (
-                <>
-                  <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
-                  Saving...
-                </>
-              ) : (
-                <>
-                  <Check className="w-4 h-4 mr-2" />
-                  Save Receipt
-                </>
-              )}
-            </Button>
-          </DialogFooter>
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={handleClose}>
+                  <X className="w-4 h-4 mr-2" />
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveReceipt} disabled={isSaving || !extractedData.merchant || !extractedData.total}>
+                  {isSaving ? (
+                    <>
+                      <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin mr-2" />
+                      Saving...
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-4 h-4 mr-2" />
+                      Save Receipt
+                    </>
+                  )}
+                </Button>
+              </DialogFooter>
+            </>
+          )}
         </DialogContent>
       </Dialog>
     </>
   );
 };
-
-function decode(base64: string): Uint8Array {
-  const binaryString = atob(base64);
-  const bytes = new Uint8Array(binaryString.length);
-  for (let i = 0; i < binaryString.length; i++) {
-    bytes[i] = binaryString.charCodeAt(i);
-  }
-  return bytes;
-}
 
 export default ReceiptScanner;
