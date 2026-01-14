@@ -5,7 +5,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useStore } from '@/contexts/StoreContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
 import {
   Select,
   SelectContent,
@@ -35,7 +34,12 @@ const CATEGORY_LABELS: Record<string, string> = {
   other: 'Other',
 };
 
-const ReceiptHistory = () => {
+interface ReceiptHistoryProps {
+  limit?: number;
+  compact?: boolean;
+}
+
+const ReceiptHistory = ({ limit, compact = false }: ReceiptHistoryProps) => {
   const [receipts, setReceipts] = useState<ReceiptItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -81,6 +85,9 @@ const ReceiptHistory = () => {
     r.vendor_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  // Apply limit if specified
+  const displayReceipts = limit ? filteredReceipts.slice(0, limit) : filteredReceipts;
+
   const totalAmount = filteredReceipts.reduce((sum, r) => sum + r.amount, 0);
   const totalTax = filteredReceipts.reduce((sum, r) => sum + r.tax_amount, 0);
 
@@ -94,48 +101,52 @@ const ReceiptHistory = () => {
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-3">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input
-            placeholder="Search receipts..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
+      {/* Filters - hide in compact mode */}
+      {!compact && (
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search receipts..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+            <SelectTrigger className="w-full sm:w-40">
+              <Filter className="w-4 h-4 mr-2" />
+              <SelectValue placeholder="Category" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Categories</SelectItem>
+              {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
+                <SelectItem key={value} value={value}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
-        <Select value={categoryFilter} onValueChange={setCategoryFilter}>
-          <SelectTrigger className="w-full sm:w-40">
-            <Filter className="w-4 h-4 mr-2" />
-            <SelectValue placeholder="Category" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All Categories</SelectItem>
-            {Object.entries(CATEGORY_LABELS).map(([value, label]) => (
-              <SelectItem key={value} value={value}>{label}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-      </div>
+      )}
 
-      {/* Summary */}
-      <div className="grid grid-cols-2 gap-3">
-        <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
-          <p className="text-sm text-muted-foreground">Total Spent</p>
-          <p className="text-xl font-bold text-foreground">${totalAmount.toFixed(2)}</p>
+      {/* Summary - hide in compact mode */}
+      {!compact && (
+        <div className="grid grid-cols-2 gap-3">
+          <div className="p-4 rounded-xl bg-primary/5 border border-primary/10">
+            <p className="text-sm text-muted-foreground">Total Spent</p>
+            <p className="text-xl font-bold text-foreground">${totalAmount.toFixed(2)}</p>
+          </div>
+          <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+            <p className="text-sm text-muted-foreground">COGS Total</p>
+            <p className="text-xl font-bold text-foreground">
+              ${filteredReceipts.filter(r => r.is_food_item).reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+            </p>
+          </div>
         </div>
-        <div className="p-4 rounded-xl bg-success/5 border border-success/10">
-          <p className="text-sm text-muted-foreground">COGS Total</p>
-          <p className="text-xl font-bold text-foreground">
-            ${filteredReceipts.filter(r => r.is_food_item).reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
-          </p>
-        </div>
-      </div>
+      )}
 
       {/* Receipt List */}
       <div className="space-y-2">
-        {filteredReceipts.length === 0 ? (
+        {displayReceipts.length === 0 ? (
           <div className="text-center py-12">
             <Receipt className="w-12 h-12 text-muted-foreground/50 mx-auto mb-3" />
             <p className="text-muted-foreground">No receipts found</p>
@@ -144,7 +155,7 @@ const ReceiptHistory = () => {
             </p>
           </div>
         ) : (
-          filteredReceipts.map((receipt) => (
+          displayReceipts.map((receipt) => (
             <button
               key={receipt.id}
               className="w-full flex items-center gap-4 p-4 rounded-xl bg-card border border-border hover:border-primary/20 transition-colors text-left"
