@@ -180,16 +180,18 @@ const Dashboard = () => {
   };
 
   return (
-    <div className="min-h-screen flex bg-background">
+    <div className="min-h-screen bg-background">
       <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <div className="flex-1 flex flex-col min-w-0">
-        <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} />
-        
-        <main className="flex-1 p-4 sm:p-6 overflow-auto pb-24 lg:pb-6">
+      {/* Fixed Header */}
+      <Header onMenuClick={() => setSidebarOpen(true)} onNavigate={handleNavigate} />
+      
+      {/* Main content with top padding for fixed header and bottom for nav */}
+      <main className="pt-16 pb-28 lg:pb-6 lg:pl-0">
+        <div className="p-4 sm:p-6">
           {renderContent()}
-        </main>
-      </div>
+        </div>
+      </main>
 
       {/* Mobile Bottom Navigation */}
       <MobileNav activeTab={activeTab} onTabChange={setActiveTab} />
