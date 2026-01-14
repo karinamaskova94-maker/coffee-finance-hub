@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { Save, Store, Percent, MapPin } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Save, Store, Percent, MapPin, Info } from 'lucide-react';
 import { useStore } from '@/contexts/StoreContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -12,17 +12,17 @@ const SettingsPanel = () => {
   
   const [storeName, setStoreName] = useState(currentStore?.name || '');
   const [storeAddress, setStoreAddress] = useState(currentStore?.address || '');
-  const [taxRate, setTaxRate] = useState(currentStore?.state_tax_rate?.toString() || '8.87');
+  const [taxRate, setTaxRate] = useState(currentStore?.state_tax_rate?.toString() || '9.5');
   const [isSaving, setIsSaving] = useState(false);
 
   // Update form when store changes
-  useState(() => {
+  useEffect(() => {
     if (currentStore) {
       setStoreName(currentStore.name);
       setStoreAddress(currentStore.address || '');
-      setTaxRate(currentStore.state_tax_rate?.toString() || '8.87');
+      setTaxRate(currentStore.state_tax_rate?.toString() || '9.5');
     }
-  });
+  }, [currentStore]);
 
   const handleSave = async () => {
     if (!currentStore) return;
@@ -31,7 +31,7 @@ const SettingsPanel = () => {
     const success = await updateStore(currentStore.id, {
       name: storeName.trim(),
       address: storeAddress.trim() || null,
-      state_tax_rate: parseFloat(taxRate) || 8.87,
+      state_tax_rate: parseFloat(taxRate) || 9.5,
     });
 
     if (success) {
@@ -89,14 +89,14 @@ const SettingsPanel = () => {
             id="storeAddress"
             value={storeAddress}
             onChange={(e) => setStoreAddress(e.target.value)}
-            placeholder="123 Main St, City, State"
+            placeholder="123 Main St, City, CA"
           />
         </div>
 
         <div className="space-y-2">
           <Label htmlFor="taxRate" className="flex items-center gap-2">
             <Percent className="w-4 h-4" />
-            State Tax Rate (%)
+            California Sales Tax Rate (%)
           </Label>
           <Input
             id="taxRate"
@@ -106,11 +106,25 @@ const SettingsPanel = () => {
             max="20"
             value={taxRate}
             onChange={(e) => setTaxRate(e.target.value)}
-            placeholder="8.87"
+            placeholder="9.5"
           />
           <p className="text-xs text-muted-foreground">
-            This rate is used to auto-calculate tax on non-food purchases
+            Default is 9.5% (California average). This rate is used to auto-calculate tax on non-food purchases.
           </p>
+        </div>
+
+        {/* California Tax Info */}
+        <div className="flex items-start gap-3 p-4 rounded-lg bg-blue-50 border border-blue-200">
+          <Info className="w-5 h-5 text-blue-600 mt-0.5 shrink-0" />
+          <div className="text-sm">
+            <p className="font-medium text-blue-800">California Tax Rules</p>
+            <ul className="mt-2 space-y-1 text-blue-700">
+              <li>• Food for home consumption is <strong>tax-exempt</strong></li>
+              <li>• Prepared/hot food is <strong>taxable</strong></li>
+              <li>• Costco items marked 'E' or 'F' are tax-exempt food</li>
+              <li>• Items marked 'A' are taxable merchandise</li>
+            </ul>
+          </div>
         </div>
       </div>
 

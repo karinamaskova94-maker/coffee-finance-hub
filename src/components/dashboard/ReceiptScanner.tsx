@@ -1,9 +1,10 @@
 import { useState, useRef } from 'react';
-import { Camera, Upload, X, Check, AlertCircle, Receipt } from 'lucide-react';
+import { Camera, Upload, X, Check, AlertCircle, Receipt, Sparkles, Leaf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Badge } from '@/components/ui/badge';
 import {
   Dialog,
   DialogContent,
@@ -28,6 +29,11 @@ interface ExtractedData {
   total: string;
   tax: string;
   date: string;
+  isFoodItem: boolean;
+  taxableAmount: number;
+  nonTaxableAmount: number;
+  category: 'cogs' | 'supplies' | 'mixed';
+  hasTaxSavings: boolean;
 }
 
 const CATEGORIES = [
@@ -49,10 +55,16 @@ const ReceiptScanner = () => {
     total: '',
     tax: '',
     date: new Date().toISOString().split('T')[0],
+    isFoodItem: false,
+    taxableAmount: 0,
+    nonTaxableAmount: 0,
+    category: 'cogs',
+    hasTaxSavings: false,
   });
   const [category, setCategory] = useState('cogs');
   const [isFoodItem, setIsFoodItem] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [hasTaxSavings, setHasTaxSavings] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cameraInputRef = useRef<HTMLInputElement>(null);
@@ -61,26 +73,58 @@ const ReceiptScanner = () => {
   const { user } = useAuth();
   const { toast } = useToast();
 
-  // Placeholder OCR function - will be replaced with Gemini API
+  // Use Gemini AI via edge function for OCR
   const performOCR = async (imageData: string): Promise<ExtractedData> => {
-    // Simulate OCR processing delay
-    await new Promise(resolve => setTimeout(resolve, 1500));
-    
-    // Placeholder: Return mock data for demo
-    // This will be replaced with actual Gemini API call
-    return {
-      merchant: 'Costco',
-      total: '125.47',
-      tax: '10.23',
-      date: new Date().toISOString().split('T')[0],
-    };
+    try {
+      const response = await supabase.functions.invoke('scan-receipt', {
+        body: {
+          imageBase64: imageData,
+          stateTaxRate: currentStore?.state_tax_rate || 9.5,
+        },
+      });
+
+      if (response.error) {
+        throw new Error(response.error.message || 'OCR failed');
+      }
+
+      const data = response.data;
+      
+      if (data.fallback) {
+        throw new Error(data.error || 'OCR processing failed');
+      }
+
+      return {
+        merchant: data.merchant || '',
+        total: String(data.total || ''),
+        tax: String(data.tax || ''),
+        date: data.date || new Date().toISOString().split('T')[0],
+        isFoodItem: data.isFoodItem || false,
+        taxableAmount: data.taxableAmount || 0,
+        nonTaxableAmount: data.nonTaxableAmount || 0,
+        category: data.category || 'cogs',
+        hasTaxSavings: data.hasTaxSavings || false,
+      };
+    } catch (error) {
+      console.error('OCR Error:', error);
+      // Return empty data so user can fill manually
+      return {
+        merchant: '',
+        total: '',
+        tax: '',
+        date: new Date().toISOString().split('T')[0],
+        isFoodItem: false,
+        taxableAmount: 0,
+        nonTaxableAmount: 0,
+        category: 'cogs',
+        hasTaxSavings: false,
+      };
+    }
   };
 
   const calculateTax = (total: string, taxRate: number, isFood: boolean): string => {
-    if (isFood) return '0.00'; // Food items are typically tax-exempt
+    if (isFood) return '0.00';
     
     const totalAmount = parseFloat(total) || 0;
-    // Calculate tax from pre-tax amount: tax = total - (total / (1 + rate))
     const taxAmount = totalAmount - (totalAmount / (1 + taxRate / 100));
     return taxAmount.toFixed(2);
   };
@@ -96,11 +140,21 @@ const ReceiptScanner = () => {
       try {
         const data = await performOCR(imageData);
         setExtractedData(data);
+        setCategory(data.category);
+        setIsFoodItem(data.isFoodItem);
+        setHasTaxSavings(data.hasTaxSavings);
         
-        // Auto-calculate tax if merchant is Costco and not food
-        if (data.merchant.toLowerCase().includes('costco') && !isFoodItem) {
-          const calculatedTax = calculateTax(data.total, currentStore?.state_tax_rate || 8.87, false);
-          setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
+        if (!data.merchant) {
+          toast({
+            title: 'Manual Entry Required',
+            description: 'Could not read receipt automatically. Please enter details manually.',
+            variant: 'default',
+          });
+        } else {
+          toast({
+            title: 'Receipt Scanned',
+            description: `Found ${data.merchant} receipt for $${data.total}`,
+          });
         }
         
         setIsScanning(false);
@@ -108,8 +162,8 @@ const ReceiptScanner = () => {
       } catch (error) {
         console.error('OCR Error:', error);
         toast({
-          title: 'Scan Failed',
-          description: 'Could not extract data from receipt. Please enter manually.',
+          title: 'Scan Issue',
+          description: 'AI processing had an issue. Please enter details manually.',
           variant: 'destructive',
         });
         setIsScanning(false);
@@ -139,7 +193,6 @@ const ReceiptScanner = () => {
     setIsSaving(true);
 
     try {
-      // Upload image if available
       let imageUrl = null;
       if (capturedImage) {
         const fileName = `${user.id}/${Date.now()}.jpg`;
@@ -158,33 +211,59 @@ const ReceiptScanner = () => {
         }
       }
 
-      // Save receipt to database
+      // Determine final category based on tax savings logic
+      let finalCategory = category;
+      const isCostco = extractedData.merchant.toLowerCase().includes('costco');
+      const taxAmount = parseFloat(extractedData.tax) || 0;
+      
+      if (isCostco) {
+        if (taxAmount === 0 && isFoodItem) {
+          finalCategory = 'cogs';
+        } else if (taxAmount > 0 && !isFoodItem) {
+          finalCategory = 'supplies';
+        }
+      }
+
       const { error } = await supabase.from('receipts').insert({
         user_id: user.id,
         store_id: currentStore.id,
         vendor_name: extractedData.merchant,
         amount: parseFloat(extractedData.total) || 0,
         tax_amount: parseFloat(extractedData.tax) || 0,
-        category,
+        category: finalCategory,
         receipt_date: extractedData.date,
         is_food_item: isFoodItem,
         image_url: imageUrl,
         status: 'pending',
+        notes: hasTaxSavings ? 'Tax savings identified - food items exempt' : null,
       });
 
       if (error) throw error;
 
       toast({
         title: 'Receipt Saved',
-        description: `$${extractedData.total} from ${extractedData.merchant} added successfully.`,
+        description: hasTaxSavings 
+          ? `$${extractedData.total} from ${extractedData.merchant} saved with tax savings!`
+          : `$${extractedData.total} from ${extractedData.merchant} added successfully.`,
       });
 
       // Reset state
       setIsConfirmOpen(false);
       setCapturedImage(null);
-      setExtractedData({ merchant: '', total: '', tax: '', date: new Date().toISOString().split('T')[0] });
+      setExtractedData({
+        merchant: '',
+        total: '',
+        tax: '',
+        date: new Date().toISOString().split('T')[0],
+        isFoodItem: false,
+        taxableAmount: 0,
+        nonTaxableAmount: 0,
+        category: 'cogs',
+        hasTaxSavings: false,
+      });
       setCategory('cogs');
       setIsFoodItem(false);
+      setHasTaxSavings(false);
     } catch (error) {
       console.error('Save error:', error);
       toast({
@@ -197,18 +276,21 @@ const ReceiptScanner = () => {
     }
   };
 
-  // Handle food item toggle - recalculate tax
   const handleFoodToggle = (checked: boolean) => {
     setIsFoodItem(checked);
     if (extractedData.total) {
-      const calculatedTax = calculateTax(extractedData.total, currentStore?.state_tax_rate || 8.87, checked);
+      const calculatedTax = calculateTax(extractedData.total, currentStore?.state_tax_rate || 9.5, checked);
       setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
+      setHasTaxSavings(checked && parseFloat(extractedData.total) > 0);
+    }
+    // Auto-set category based on food toggle
+    if (checked) {
+      setCategory('cogs');
     }
   };
 
   return (
     <>
-      {/* Hidden file inputs */}
       <input
         ref={fileInputRef}
         type="file"
@@ -225,7 +307,6 @@ const ReceiptScanner = () => {
         onChange={handleFileChange}
       />
 
-      {/* Scan Button */}
       <Button
         onClick={() => cameraInputRef.current?.click()}
         className="gap-2 bg-primary hover:bg-primary/90"
@@ -233,8 +314,8 @@ const ReceiptScanner = () => {
       >
         {isScanning ? (
           <>
-            <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-            Scanning...
+            <Sparkles className="w-4 h-4 animate-pulse" />
+            AI Scanning...
           </>
         ) : (
           <>
@@ -244,7 +325,6 @@ const ReceiptScanner = () => {
         )}
       </Button>
 
-      {/* Upload alternative */}
       <Button
         variant="outline"
         onClick={() => fileInputRef.current?.click()}
@@ -255,13 +335,18 @@ const ReceiptScanner = () => {
         Upload
       </Button>
 
-      {/* Confirmation Modal */}
       <Dialog open={isConfirmOpen} onOpenChange={setIsConfirmOpen}>
-        <DialogContent className="sm:max-w-lg">
+        <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Receipt className="w-5 h-5 text-primary" />
               Confirm Receipt Data
+              {hasTaxSavings && (
+                <Badge variant="secondary" className="ml-2 bg-green-100 text-green-700 border-green-200">
+                  <Leaf className="w-3 h-3 mr-1" />
+                  Tax Savings
+                </Badge>
+              )}
             </DialogTitle>
           </DialogHeader>
 
@@ -273,6 +358,21 @@ const ReceiptScanner = () => {
                   alt="Captured receipt"
                   className="w-full h-full object-contain"
                 />
+              </div>
+            )}
+
+            {/* Tax Savings Banner */}
+            {hasTaxSavings && (
+              <div className="flex items-center gap-3 p-4 rounded-lg bg-green-50 border border-green-200">
+                <div className="p-2 rounded-full bg-green-100">
+                  <Leaf className="w-5 h-5 text-green-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-green-800">Tax Savings Identified!</p>
+                  <p className="text-sm text-green-600">
+                    Food items detected without tax. Categorized as COGS.
+                  </p>
+                </div>
               </div>
             )}
 
@@ -307,8 +407,7 @@ const ReceiptScanner = () => {
                   value={extractedData.total}
                   onChange={(e) => {
                     setExtractedData(prev => ({ ...prev, total: e.target.value }));
-                    // Recalculate tax when total changes
-                    const calculatedTax = calculateTax(e.target.value, currentStore?.state_tax_rate || 8.87, isFoodItem);
+                    const calculatedTax = calculateTax(e.target.value, currentStore?.state_tax_rate || 9.5, isFoodItem);
                     setExtractedData(prev => ({ ...prev, tax: calculatedTax }));
                   }}
                   placeholder="0.00"
@@ -326,6 +425,21 @@ const ReceiptScanner = () => {
                 />
               </div>
             </div>
+
+            {/* Split amounts for mixed purchases */}
+            {extractedData.merchant.toLowerCase().includes('costco') && 
+             extractedData.taxableAmount > 0 && extractedData.nonTaxableAmount > 0 && (
+              <div className="grid grid-cols-2 gap-4 p-3 rounded-lg bg-muted/50">
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Taxable (Supplies)</p>
+                  <p className="text-lg font-semibold">${extractedData.taxableAmount.toFixed(2)}</p>
+                </div>
+                <div className="text-center">
+                  <p className="text-xs text-muted-foreground">Tax-Free (COGS)</p>
+                  <p className="text-lg font-semibold text-green-600">${extractedData.nonTaxableAmount.toFixed(2)}</p>
+                </div>
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label htmlFor="category">Category</Label>
@@ -354,19 +468,19 @@ const ReceiptScanner = () => {
                   Food/Grocery Item (Tax Exempt)
                 </Label>
                 <p className="text-xs text-muted-foreground mt-0.5">
-                  Check if this receipt is for tax-exempt food items
+                  Check if this is for tax-exempt food items (CA sales tax doesn't apply)
                 </p>
               </div>
             </div>
 
             {extractedData.merchant.toLowerCase().includes('costco') && !isFoodItem && (
-              <div className="flex items-start gap-2 p-3 rounded-lg bg-warning/10 border border-warning/20">
-                <AlertCircle className="w-4 h-4 text-warning mt-0.5 shrink-0" />
+              <div className="flex items-start gap-2 p-3 rounded-lg bg-amber-50 border border-amber-200">
+                <AlertCircle className="w-4 h-4 text-amber-600 mt-0.5 shrink-0" />
                 <div className="text-sm">
-                  <p className="font-medium text-warning">Tax Auto-Calculated</p>
-                  <p className="text-muted-foreground mt-0.5">
-                    Based on {currentStore?.state_tax_rate || 8.87}% state tax rate. 
-                    Check your resale certificate for Costco purchases.
+                  <p className="font-medium text-amber-800">Costco Tax Calculation</p>
+                  <p className="text-amber-700 mt-0.5">
+                    Tax calculated at {currentStore?.state_tax_rate || 9.5}% (CA average).
+                    Items marked 'E' or 'F' on receipt are tax-exempt food.
                   </p>
                 </div>
               </div>
@@ -398,7 +512,6 @@ const ReceiptScanner = () => {
   );
 };
 
-// Helper function to decode base64
 function decode(base64: string): Uint8Array {
   const binaryString = atob(base64);
   const bytes = new Uint8Array(binaryString.length);
