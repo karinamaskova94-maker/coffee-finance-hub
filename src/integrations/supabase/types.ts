@@ -14,6 +14,78 @@ export type Database = {
   }
   public: {
     Tables: {
+      email_inbox: {
+        Row: {
+          created_at: string
+          emails_received: number | null
+          id: string
+          is_active: boolean
+          last_email_at: string | null
+          unique_email: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          emails_received?: number | null
+          id?: string
+          is_active?: boolean
+          last_email_at?: string | null
+          unique_email: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          emails_received?: number | null
+          id?: string
+          is_active?: boolean
+          last_email_at?: string | null
+          unique_email?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      integrations: {
+        Row: {
+          access_token: string | null
+          config: Json | null
+          created_at: string
+          external_id: string | null
+          id: string
+          integration_type: string
+          last_synced_at: string | null
+          refresh_token: string | null
+          status: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          access_token?: string | null
+          config?: Json | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          integration_type: string
+          last_synced_at?: string | null
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          access_token?: string | null
+          config?: Json | null
+          created_at?: string
+          external_id?: string | null
+          id?: string
+          integration_type?: string
+          last_synced_at?: string | null
+          refresh_token?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       inventory_items: {
         Row: {
           created_at: string
@@ -437,6 +509,47 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      webhook_events: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          event_type: string
+          id: string
+          integration_id: string | null
+          payload: Json
+          processed_at: string | null
+          status: string
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          event_type: string
+          id?: string
+          integration_id?: string | null
+          payload: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          event_type?: string
+          id?: string
+          integration_id?: string | null
+          payload?: Json
+          processed_at?: string | null
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "webhook_events_integration_id_fkey"
+            columns: ["integration_id"]
+            isOneToOne: false
+            referencedRelation: "integrations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Views: {

@@ -9,11 +9,14 @@ import ReceiptScanner from '@/components/dashboard/ReceiptScanner';
 import MobileNav from '@/components/dashboard/MobileNav';
 import ReceiptHistory from '@/components/dashboard/ReceiptHistory';
 import SettingsPanel from '@/components/dashboard/SettingsPanel';
+import { IntegrationsPanel } from '@/components/dashboard/IntegrationsPanel';
+import { EmailScanStatus } from '@/components/dashboard/EmailScanStatus';
 import Inventory from '@/pages/Inventory';
 import { SundayCount } from '@/components/stocktake/SundayCount';
 import { TopModifiersChart } from '@/components/dashboard/TopModifiersChart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { COFFEE_SHOP_TEMPLATES } from '@/lib/recipeTemplates';
@@ -105,7 +108,18 @@ const Dashboard = () => {
         return (
           <section>
             <h2 className="text-lg font-semibold text-foreground mb-4">Settings</h2>
-            <SettingsPanel />
+            <Tabs defaultValue="store" className="w-full">
+              <TabsList className="grid w-full max-w-md grid-cols-2">
+                <TabsTrigger value="store">Store Settings</TabsTrigger>
+                <TabsTrigger value="integrations">Integrations</TabsTrigger>
+              </TabsList>
+              <TabsContent value="store" className="mt-4">
+                <SettingsPanel />
+              </TabsContent>
+              <TabsContent value="integrations" className="mt-4">
+                <IntegrationsPanel />
+              </TabsContent>
+            </Tabs>
           </section>
         );
       case 'profit':
@@ -229,6 +243,9 @@ const Dashboard = () => {
                 variant="success"
               />
             </div>
+
+            {/* Email Scan Status */}
+            <EmailScanStatus />
 
             {/* Top Modifiers Chart */}
             <TopModifiersChart />
