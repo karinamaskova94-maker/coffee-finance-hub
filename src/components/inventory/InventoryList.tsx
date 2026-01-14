@@ -42,6 +42,8 @@ interface InventoryItem {
   name: string;
   unit_type: PurchaseUnit;
   current_unit_price: number;
+  package_size: number;
+  package_price: number;
   last_updated: string;
 }
 
@@ -68,7 +70,11 @@ export function InventoryList() {
   // Form state
   const [formName, setFormName] = useState('');
   const [formUnitType, setFormUnitType] = useState<PurchaseUnit>('each');
-  const [formPrice, setFormPrice] = useState('');
+  const [formPackageSize, setFormPackageSize] = useState('1');
+  const [formPackagePrice, setFormPackagePrice] = useState('');
+
+  // Auto-calculate unit price
+  const calculatedUnitPrice = (parseFloat(formPackagePrice) || 0) / (parseFloat(formPackageSize) || 1);
 
   const fetchItems = async () => {
     if (!user) return;
@@ -96,7 +102,8 @@ export function InventoryList() {
   const resetForm = () => {
     setFormName('');
     setFormUnitType('each');
-    setFormPrice('');
+    setFormPackageSize('1');
+    setFormPackagePrice('');
     setEditingItem(null);
   };
 
@@ -106,10 +113,16 @@ export function InventoryList() {
       return;
     }
 
+    const packageSize = parseFloat(formPackageSize) || 1;
+    const packagePrice = parseFloat(formPackagePrice) || 0;
+    const unitPrice = packagePrice / packageSize;
+
     const itemData = {
       name: formName.trim(),
       unit_type: formUnitType,
-      current_unit_price: parseFloat(formPrice) || 0,
+      package_size: packageSize,
+      package_price: packagePrice,
+      current_unit_price: unitPrice,
       user_id: user.id,
       last_updated: new Date().toISOString(),
     };
@@ -153,7 +166,8 @@ export function InventoryList() {
     setEditingItem(item);
     setFormName(item.name);
     setFormUnitType(item.unit_type);
-    setFormPrice(item.current_unit_price.toString());
+    setFormPackageSize(item.package_size.toString());
+    setFormPackagePrice(item.package_price.toString());
     setIsAddDialogOpen(true);
   };
 
@@ -232,51 +246,81 @@ export function InventoryList() {
                 <Label htmlFor="name">Item Name</Label>
                 <Input
                   id="name"
-                  placeholder="e.g., Whole Milk"
+                  placeholder="e.g., Coffee Beans"
                   value={formName}
                   onChange={(e) => setFormName(e.target.value)}
                 />
               </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Purchase Unit</Label>
-                  <Select value={formUnitType} onValueChange={(v) => setFormUnitType(v as PurchaseUnit)}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {UNIT_TYPES.map((unit) => (
-                        <SelectItem key={unit.value} value={unit.value}>
-                          {unit.label}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="price">Unit Price ($)</Label>
-                  <Input
-                    id="price"
-                    type="number"
-                    step="0.01"
-                    placeholder="0.00"
-                    value={formPrice}
-                    onChange={(e) => setFormPrice(e.target.value)}
-                  />
-                </div>
-              </div>
               
-              {/* Price breakdown preview */}
-              {formPrice && parseFloat(formPrice) > 0 && (formUnitType === 'gallon' || formUnitType === 'lb') && (
-                <div className="p-3 rounded-lg bg-muted/50 text-sm">
-                  <p className="font-medium mb-2">Price Breakdown:</p>
-                  <div className="space-y-1 text-muted-foreground">
-                    {getPriceBreakdown(parseFloat(formPrice) || 0, formUnitType).map(({ unit, price }) => (
-                      <p key={unit}>
-                        ${price.toFixed(4)} per {unit}
-                      </p>
-                    ))}
+              {/* Package Purchase Section */}
+              <div className="p-3 rounded-lg border bg-muted/30 space-y-3">
+                <p className="text-sm font-medium">Package Purchase</p>
+                <div className="grid grid-cols-3 gap-3">
+                  <div className="space-y-2">
+                    <Label htmlFor="packagePrice" className="text-xs">Total Price ($)</Label>
+                    <Input
+                      id="packagePrice"
+                      type="number"
+                      step="0.01"
+                      placeholder="45.00"
+                      value={formPackagePrice}
+                      onChange={(e) => setFormPackagePrice(e.target.value)}
+                    />
                   </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="packageSize" className="text-xs">Package Size</Label>
+                    <Input
+                      id="packageSize"
+                      type="number"
+                      step="0.01"
+                      min="0.01"
+                      placeholder="3"
+                      value={formPackageSize}
+                      onChange={(e) => setFormPackageSize(e.target.value)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs">Unit</Label>
+                    <Select value={formUnitType} onValueChange={(v) => setFormUnitType(v as PurchaseUnit)}>
+                      <SelectTrigger>
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {UNIT_TYPES.map((unit) => (
+                          <SelectItem key={unit.value} value={unit.value}>
+                            {unit.label}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Example: $45 for 3 LBs of coffee
+                </p>
+              </div>
+
+              {/* Auto-calculated Unit Price */}
+              {formPackagePrice && parseFloat(formPackagePrice) > 0 && (
+                <div className="p-3 rounded-lg border-2 border-primary/30 bg-primary/5 space-y-2">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm font-medium">Calculated Unit Price</span>
+                    <span className="font-mono text-lg font-bold text-primary">
+                      ${calculatedUnitPrice.toFixed(2)}/{PURCHASE_UNIT_LABELS[formUnitType]}
+                    </span>
+                  </div>
+                  
+                  {/* Price breakdown for smaller units */}
+                  {(formUnitType === 'gallon' || formUnitType === 'lb') && (
+                    <div className="pt-2 border-t space-y-1">
+                      <p className="text-xs text-muted-foreground">Price per smaller unit:</p>
+                      {getPriceBreakdown(calculatedUnitPrice, formUnitType).map(({ unit, price }) => (
+                        <p key={unit} className="text-sm font-mono">
+                          ${price.toFixed(4)} per {unit}
+                        </p>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
               
@@ -331,8 +375,8 @@ export function InventoryList() {
               <TableRow>
                 <TableHead>Item Name</TableHead>
                 <TableHead>Unit</TableHead>
-                <TableHead className="text-right">Price</TableHead>
-                <TableHead className="text-right">Updated</TableHead>
+                <TableHead className="text-right">Package</TableHead>
+                <TableHead className="text-right">Unit Price</TableHead>
                 <TableHead className="w-[80px]"></TableHead>
               </TableRow>
             </TableHeader>
@@ -348,11 +392,14 @@ export function InventoryList() {
                       </span>
                     </TableCell>
                     <TableCell className="text-right">
-                      <div className="font-mono">{price}</div>
-                      <div className="text-xs text-muted-foreground">per {unit}</div>
+                      <div className="font-mono text-sm">${item.package_price.toFixed(2)}</div>
+                      <div className="text-xs text-muted-foreground">
+                        for {item.package_size} {PURCHASE_UNIT_LABELS[item.unit_type]}
+                      </div>
                     </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {format(new Date(item.last_updated), 'MMM d')}
+                    <TableCell className="text-right">
+                      <div className="font-mono font-medium">{price}</div>
+                      <div className="text-xs text-muted-foreground">per {unit}</div>
                     </TableCell>
                     <TableCell>
                       <div className="flex gap-1 justify-end">

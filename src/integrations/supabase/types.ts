@@ -21,6 +21,8 @@ export type Database = {
           id: string
           last_updated: string
           name: string
+          package_price: number
+          package_size: number
           unit_type: Database["public"]["Enums"]["unit_type"]
           user_id: string
         }
@@ -30,6 +32,8 @@ export type Database = {
           id?: string
           last_updated?: string
           name: string
+          package_price?: number
+          package_size?: number
           unit_type?: Database["public"]["Enums"]["unit_type"]
           user_id: string
         }
@@ -39,6 +43,8 @@ export type Database = {
           id?: string
           last_updated?: string
           name?: string
+          package_price?: number
+          package_size?: number
           unit_type?: Database["public"]["Enums"]["unit_type"]
           user_id?: string
         }
