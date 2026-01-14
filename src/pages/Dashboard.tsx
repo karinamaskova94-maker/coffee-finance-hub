@@ -10,6 +10,7 @@ import ReceiptScanner from '@/components/dashboard/ReceiptScanner';
 import MobileNav from '@/components/dashboard/MobileNav';
 import ReceiptHistory from '@/components/dashboard/ReceiptHistory';
 import SettingsPanel from '@/components/dashboard/SettingsPanel';
+import Inventory from '@/pages/Inventory';
 
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -21,6 +22,13 @@ const Dashboard = () => {
 
   const renderContent = () => {
     switch (activeTab) {
+      case 'inventory':
+        return (
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4">Inventory & Recipes</h2>
+            <Inventory />
+          </section>
+        );
       case 'history':
         return (
           <section>

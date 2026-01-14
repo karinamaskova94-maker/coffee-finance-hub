@@ -1,4 +1,4 @@
-import { LayoutDashboard, History, FileText, Settings } from 'lucide-react';
+import { LayoutDashboard, History, FileText, Package } from 'lucide-react';
 
 interface MobileNavProps {
   activeTab: string;
@@ -7,9 +7,9 @@ interface MobileNavProps {
 
 const navItems = [
   { id: 'dashboard', icon: LayoutDashboard, label: 'Dashboard' },
+  { id: 'inventory', icon: Package, label: 'Inventory' },
   { id: 'history', icon: History, label: 'History' },
   { id: 'reports', icon: FileText, label: 'Reports' },
-  { id: 'settings', icon: Settings, label: 'Settings' },
 ];
 
 const MobileNav = ({ activeTab, onTabChange }: MobileNavProps) => {
