@@ -1,4 +1,4 @@
-import { Home, Package, ClipboardCheck, BarChart3 } from 'lucide-react';
+import { Home, Package, ChefHat, BarChart3 } from 'lucide-react';
 
 interface MobileNavProps {
   activeTab: string;
@@ -6,19 +6,19 @@ interface MobileNavProps {
 }
 
 const navItems = [
-  { id: 'home', icon: Home, label: 'Home' },
+  { id: 'home', icon: Home, label: 'Dashboard' },
   { id: 'inventory', icon: Package, label: 'Inventory' },
-  { id: 'stocktake', icon: ClipboardCheck, label: 'Count' },
-  { id: 'profit', icon: BarChart3, label: 'Profit' },
+  { id: 'recipes', icon: ChefHat, label: 'Recipes' },
+  { id: 'reports', icon: BarChart3, label: 'Reports' },
 ];
 
 const MobileNav = ({ activeTab, onTabChange }: MobileNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-[9998] lg:hidden bg-white border-t-2 border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+    <nav className="fixed bottom-0 left-0 right-0 z-[9998] lg:hidden bg-background border-t-2 border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
       {/* Navigation items */}
       <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
-          const isActive = activeTab === item.id;
+          const isActive = activeTab === item.id || (item.id === 'reports' && activeTab === 'profit');
           return (
             <button
               key={item.id}
@@ -44,7 +44,7 @@ const MobileNav = ({ activeTab, onTabChange }: MobileNavProps) => {
         })}
       </div>
       {/* Safe area padding for iPhone home indicator */}
-      <div className="h-[env(safe-area-inset-bottom,0px)] bg-white" />
+      <div className="h-[env(safe-area-inset-bottom,0px)] bg-background" />
     </nav>
   );
 };
