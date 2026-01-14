@@ -58,7 +58,7 @@ interface MenuItemIngredient {
   id: string;
   inventory_item_id: string;
   quantity: number;
-  usage_unit?: UsageUnit;
+  usage_unit: UsageUnit;
   inventory_item?: InventoryItem;
 }
 
@@ -113,13 +113,14 @@ export function MenuItemBuilder() {
     for (const menu of menuData || []) {
       const { data: ingredients } = await supabase
         .from('menu_item_ingredients')
-        .select('id, inventory_item_id, quantity')
+        .select('id, inventory_item_id, quantity, usage_unit')
         .eq('menu_item_id', menu.id);
 
       menuItemsWithIngredients.push({
         ...menu,
         ingredients: (ingredients || []).map(ing => ({
           ...ing,
+          usage_unit: (ing.usage_unit as UsageUnit) || 'oz',
           inventory_item: invData?.find(inv => inv.id === ing.inventory_item_id),
         })),
       });
@@ -172,10 +173,14 @@ export function MenuItemBuilder() {
     return ingredients.reduce((sum, ing) => {
       if (!ing.inventory_item) return sum;
       
-      // Use the stored quantity directly with the purchase unit for display
-      // In a full implementation, we'd store usage_unit with each ingredient
-      const price = ing.inventory_item.current_unit_price;
-      return sum + (price * ing.quantity);
+      // Use proper unit conversion: quantity is in usage_unit, price is per purchase unit
+      const cost = calculateIngredientCost(
+        ing.quantity,
+        ing.usage_unit,
+        ing.inventory_item.current_unit_price,
+        ing.inventory_item.unit_type
+      );
+      return sum + cost;
     }, 0);
   };
 
@@ -225,18 +230,15 @@ export function MenuItemBuilder() {
       return;
     }
 
-    // Add ingredients (converting usage quantities to purchase unit quantities)
+    // Add ingredients with their usage units
     const validIngredients = formIngredients.filter(ing => ing.inventoryId && ing.quantity);
     if (validIngredients.length > 0) {
-      const ingredientData = validIngredients.map(ing => {
-        // Store the quantity in the usage unit for now
-        // In a full implementation, we'd also store the usage_unit
-        return {
-          menu_item_id: menuItem.id,
-          inventory_item_id: ing.inventoryId,
-          quantity: parseFloat(ing.quantity) || 0,
-        };
-      });
+      const ingredientData = validIngredients.map(ing => ({
+        menu_item_id: menuItem.id,
+        inventory_item_id: ing.inventoryId,
+        quantity: parseFloat(ing.quantity) || 0,
+        usage_unit: ing.usageUnit,
+      }));
 
       const { error: ingError } = await supabase
         .from('menu_item_ingredients')
@@ -521,16 +523,26 @@ export function MenuItemBuilder() {
                   {/* Ingredients */}
                   {item.ingredients.length > 0 && (
                     <div className="text-xs space-y-1 text-muted-foreground">
-                      {item.ingredients.map((ing) => (
-                        <div key={ing.id} className="flex justify-between">
-                          <span>
-                            {ing.inventory_item?.name || 'Unknown'} × {ing.quantity} {ing.inventory_item ? PURCHASE_UNIT_LABELS[ing.inventory_item.unit_type] : ''}
-                          </span>
-                          <span className="font-mono">
-                            ${((ing.inventory_item?.current_unit_price || 0) * ing.quantity).toFixed(2)}
-                          </span>
-                        </div>
-                      ))}
+                      {item.ingredients.map((ing) => {
+                        const ingredientCost = ing.inventory_item 
+                          ? calculateIngredientCost(
+                              ing.quantity,
+                              ing.usage_unit,
+                              ing.inventory_item.current_unit_price,
+                              ing.inventory_item.unit_type
+                            )
+                          : 0;
+                        return (
+                          <div key={ing.id} className="flex justify-between">
+                            <span>
+                              {ing.inventory_item?.name || 'Unknown'} × {ing.quantity} {USAGE_UNIT_LABELS[ing.usage_unit]}
+                            </span>
+                            <span className="font-mono">
+                              ${ingredientCost.toFixed(2)}
+                            </span>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
 

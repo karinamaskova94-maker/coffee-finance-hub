@@ -57,6 +57,7 @@ export type Database = {
           inventory_item_id: string
           menu_item_id: string
           quantity: number
+          usage_unit: string
         }
         Insert: {
           created_at?: string
@@ -64,6 +65,7 @@ export type Database = {
           inventory_item_id: string
           menu_item_id: string
           quantity?: number
+          usage_unit?: string
         }
         Update: {
           created_at?: string
@@ -71,6 +73,7 @@ export type Database = {
           inventory_item_id?: string
           menu_item_id?: string
           quantity?: number
+          usage_unit?: string
         }
         Relationships: [
           {
