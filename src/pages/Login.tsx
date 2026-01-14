@@ -4,27 +4,40 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { TrendingUp, Coffee, Lock, Mail, ArrowRight } from 'lucide-react';
+import { TrendingUp, Coffee, Lock, Mail, ArrowRight, UserPlus } from 'lucide-react';
 
 const Login = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
-  const { login } = useAuth();
+  const [isSignUp, setIsSignUp] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+  const { login, signup } = useAuth();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
+    setSuccessMessage('');
     setIsLoading(true);
 
     try {
-      const success = await login(email, password);
-      if (success) {
-        navigate('/dashboard');
+      if (isSignUp) {
+        const result = await signup(email, password);
+        if (result.success) {
+          setSuccessMessage('Account created successfully! You can now sign in.');
+          setIsSignUp(false);
+        } else {
+          setError(result.error || 'Failed to create account.');
+        }
       } else {
-        setError('Invalid credentials. Please try again.');
+        const result = await login(email, password);
+        if (result.success) {
+          navigate('/dashboard');
+        } else {
+          setError(result.error || 'Invalid credentials. Please try again.');
+        }
       }
     } catch {
       setError('An error occurred. Please try again.');
@@ -71,8 +84,12 @@ const Login = () => {
         <div className="w-full max-w-md">
           <div className="glass-card p-6 sm:p-8">
             <div className="text-center mb-6 sm:mb-8">
-              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">Welcome back</h2>
-              <p className="text-sm sm:text-base text-muted-foreground">Sign in to access your dashboard</p>
+              <h2 className="text-xl sm:text-2xl font-bold text-foreground mb-2">
+                {isSignUp ? 'Create an account' : 'Welcome back'}
+              </h2>
+              <p className="text-sm sm:text-base text-muted-foreground">
+                {isSignUp ? 'Sign up to get started' : 'Sign in to access your dashboard'}
+              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-4 sm:space-y-5">
@@ -115,6 +132,12 @@ const Login = () => {
                 </div>
               )}
 
+              {successMessage && (
+                <div className="p-3 rounded-xl bg-success/10 border border-success/20 text-success text-sm">
+                  {successMessage}
+                </div>
+              )}
+
               <Button
                 type="submit"
                 className="w-full h-11 sm:h-12 bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
@@ -123,21 +146,38 @@ const Login = () => {
                 {isLoading ? (
                   <span className="flex items-center gap-2">
                     <span className="w-4 h-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    Signing in...
+                    {isSignUp ? 'Creating account...' : 'Signing in...'}
                   </span>
                 ) : (
                   <span className="flex items-center gap-2">
-                    Sign in
-                    <ArrowRight className="w-4 h-4" />
+                    {isSignUp ? (
+                      <>
+                        Create account
+                        <UserPlus className="w-4 h-4" />
+                      </>
+                    ) : (
+                      <>
+                        Sign in
+                        <ArrowRight className="w-4 h-4" />
+                      </>
+                    )}
                   </span>
                 )}
               </Button>
             </form>
 
             <div className="mt-6 text-center">
-              <p className="text-muted-foreground text-xs sm:text-sm">
-                Demo: Use any email and password (6+ chars)
-              </p>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsSignUp(!isSignUp);
+                  setError('');
+                  setSuccessMessage('');
+                }}
+                className="text-primary hover:underline text-sm font-medium"
+              >
+                {isSignUp ? 'Already have an account? Sign in' : "Don't have an account? Sign up"}
+              </button>
             </div>
           </div>
         </div>
