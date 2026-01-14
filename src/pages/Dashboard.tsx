@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { DollarSign, BarChart3, Landmark } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
@@ -7,18 +8,20 @@ import BenchmarkGauge from '@/components/dashboard/BenchmarkGauge';
 import ReviewItem from '@/components/dashboard/ReviewItem';
 
 const Dashboard = () => {
+  const [sidebarOpen, setSidebarOpen] = useState(false);
+
   return (
     <div className="min-h-screen flex bg-background">
-      <Sidebar />
+      <Sidebar isOpen={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       
-      <div className="flex-1 flex flex-col">
-        <Header />
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header onMenuClick={() => setSidebarOpen(true)} />
         
-        <main className="flex-1 p-6 overflow-auto">
+        <main className="flex-1 p-4 sm:p-6 overflow-auto">
           {/* Top Row - Financial Pulse */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-foreground mb-4">Financial Pulse</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <section className="mb-6 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">Financial Pulse</h2>
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               <MetricCard
                 title="Net Profit"
                 value="$12,450"
@@ -47,11 +50,11 @@ const Dashboard = () => {
           </section>
 
           {/* Middle Row - Benchmarks */}
-          <section className="mb-8">
-            <h2 className="text-lg font-semibold text-foreground mb-4">
+          <section className="mb-6 sm:mb-8">
+            <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
               The Learning Mentor — Industry Benchmarks
             </h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
               <BenchmarkGauge
                 label="Labor Cost"
                 current={38}
@@ -80,10 +83,10 @@ const Dashboard = () => {
 
           {/* Bottom Row - Chaos Manager */}
           <section>
-            <h2 className="text-lg font-semibold text-foreground mb-4">
+            <h2 className="text-base sm:text-lg font-semibold text-foreground mb-3 sm:mb-4">
               The Chaos Manager — Needs Review
             </h2>
-            <div className="space-y-4">
+            <div className="space-y-3 sm:space-y-4">
               <ReviewItem
                 type="question"
                 title="Zelle to 'Ivan P.' ($400)"

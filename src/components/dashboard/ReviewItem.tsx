@@ -22,14 +22,18 @@ const ReviewItem = ({ type, title, description }: ReviewItemProps) => {
 
   return (
     <div className="review-item">
-      <div className={`w-10 h-10 rounded-lg ${bgMap[type]} flex items-center justify-center flex-shrink-0`}>
+      <div className={`w-10 h-10 rounded-xl ${bgMap[type]} flex items-center justify-center flex-shrink-0`}>
         {iconMap[type]}
       </div>
       <div className="flex-1 min-w-0">
-        <h4 className="font-medium text-foreground mb-1">{title}</h4>
-        <p className="text-sm text-muted-foreground">{description}</p>
+        <h4 className="font-medium text-foreground mb-1 text-sm sm:text-base">{title}</h4>
+        <p className="text-xs sm:text-sm text-muted-foreground">{description}</p>
       </div>
-      <Button variant="outline" size="sm" className="flex-shrink-0 border-border/50 hover:bg-accent">
+      <Button 
+        variant="outline" 
+        size="sm" 
+        className="flex-shrink-0 mt-2 sm:mt-0 w-full sm:w-auto"
+      >
         Review
       </Button>
     </div>

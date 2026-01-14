@@ -22,37 +22,32 @@ const MetricCard = ({
 }: MetricCardProps) => {
   const variantStyles = {
     default: 'text-foreground',
-    success: 'text-gradient-success',
-    warning: 'text-gradient-warning',
-    danger: 'text-gradient-danger',
-  };
-
-  const glowStyles = {
-    default: '',
-    success: 'shadow-[var(--shadow-glow-success)]',
-    warning: 'shadow-[var(--shadow-glow-warning)]',
-    danger: 'shadow-[var(--shadow-glow-danger)]',
+    success: 'text-success',
+    warning: 'text-warning',
+    danger: 'text-destructive',
   };
 
   return (
-    <div className={`metric-card ${glowStyles[variant]}`}>
-      <div className="flex items-start justify-between mb-4">
-        <div>
+    <div className="metric-card">
+      <div className="flex items-start justify-between mb-3 sm:mb-4">
+        <div className="min-w-0 flex-1">
           <p className="text-sm text-muted-foreground font-medium mb-1">{title}</p>
-          <p className={`text-3xl font-bold ${variantStyles[variant]}`}>{value}</p>
+          {value && (
+            <p className={`text-2xl sm:text-3xl font-bold ${variantStyles[variant]}`}>{value}</p>
+          )}
           {subtitle && (
             <p className="text-xs text-muted-foreground mt-1">{subtitle}</p>
           )}
         </div>
         {icon && (
-          <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+          <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-primary/10 flex items-center justify-center flex-shrink-0 ml-3">
             {icon}
           </div>
         )}
       </div>
 
       {trend && (
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 flex-wrap">
           {trend.value >= 0 ? (
             <TrendingUp className="w-4 h-4 text-success" />
           ) : (
