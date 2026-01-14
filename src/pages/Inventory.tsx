@@ -1,11 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { InventoryList } from '@/components/inventory/InventoryList';
 import { MenuItemBuilder } from '@/components/inventory/MenuItemBuilder';
 import { Package, ChefHat } from 'lucide-react';
 
-export default function Inventory() {
-  const [activeTab, setActiveTab] = useState('inventory');
+interface InventoryProps {
+  defaultTab?: 'inventory' | 'recipes';
+}
+
+export default function Inventory({ defaultTab = 'inventory' }: InventoryProps) {
+  const [activeTab, setActiveTab] = useState<string>(defaultTab);
+  
+  useEffect(() => {
+    setActiveTab(defaultTab);
+  }, [defaultTab]);
 
   return (
     <div className="space-y-4">
