@@ -14,6 +14,150 @@ export type Database = {
   }
   public: {
     Tables: {
+      inventory_items: {
+        Row: {
+          created_at: string
+          current_unit_price: number
+          id: string
+          last_updated: string
+          name: string
+          unit_type: Database["public"]["Enums"]["unit_type"]
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          current_unit_price?: number
+          id?: string
+          last_updated?: string
+          name: string
+          unit_type?: Database["public"]["Enums"]["unit_type"]
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          current_unit_price?: number
+          id?: string
+          last_updated?: string
+          name?: string
+          unit_type?: Database["public"]["Enums"]["unit_type"]
+          user_id?: string
+        }
+        Relationships: []
+      }
+      menu_item_ingredients: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string
+          menu_item_id: string
+          quantity: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          menu_item_id: string
+          quantity?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          menu_item_id?: string
+          quantity?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "menu_item_ingredients_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "menu_item_ingredients_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      menu_items: {
+        Row: {
+          category: string | null
+          created_at: string
+          id: string
+          name: string
+          retail_price: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name: string
+          retail_price?: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category?: string | null
+          created_at?: string
+          id?: string
+          name?: string
+          retail_price?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      receipt_item_mappings: {
+        Row: {
+          created_at: string
+          id: string
+          inventory_item_id: string | null
+          quantity: number | null
+          receipt_id: string | null
+          scanned_name: string
+          scanned_price: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          scanned_name: string
+          scanned_price?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          inventory_item_id?: string | null
+          quantity?: number | null
+          receipt_id?: string | null
+          scanned_name?: string
+          scanned_price?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipt_item_mappings_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "receipt_item_mappings_receipt_id_fkey"
+            columns: ["receipt_id"]
+            isOneToOne: false
+            referencedRelation: "receipts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipts: {
         Row: {
           amount: number
@@ -114,7 +258,15 @@ export type Database = {
       [_ in never]: never
     }
     Enums: {
-      [_ in never]: never
+      unit_type:
+        | "gallon"
+        | "oz"
+        | "lb"
+        | "each"
+        | "case"
+        | "bag"
+        | "box"
+        | "pack"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -241,6 +393,8 @@ export type CompositeTypes<
 
 export const Constants = {
   public: {
-    Enums: {},
+    Enums: {
+      unit_type: ["gallon", "oz", "lb", "each", "case", "bag", "box", "pack"],
+    },
   },
 } as const
