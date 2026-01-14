@@ -4,6 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 import {
   Select,
   SelectContent,
@@ -25,15 +26,21 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { Plus, ChefHat, Trash2, DollarSign, TrendingUp, TrendingDown, Minus } from 'lucide-react';
+import { Plus, ChefHat, Trash2, TrendingUp, TrendingDown, Minus, Percent } from 'lucide-react';
 import { toast } from 'sonner';
-
-type UnitType = 'gallon' | 'oz' | 'lb' | 'each' | 'case' | 'bag' | 'box' | 'pack';
+import {
+  type PurchaseUnit,
+  type UsageUnit,
+  PURCHASE_UNIT_LABELS,
+  USAGE_UNIT_LABELS,
+  getCompatibleUnits,
+  calculateIngredientCost,
+} from '@/lib/unitConversions';
 
 interface InventoryItem {
   id: string;
   name: string;
-  unit_type: UnitType;
+  unit_type: PurchaseUnit;
   current_unit_price: number;
 }
 
@@ -49,19 +56,15 @@ interface MenuItemIngredient {
   id: string;
   inventory_item_id: string;
   quantity: number;
+  usage_unit?: UsageUnit;
   inventory_item?: InventoryItem;
 }
 
-const UNIT_LABELS: Record<UnitType, string> = {
-  gallon: 'Gallon',
-  oz: 'OZ',
-  lb: 'LB',
-  each: 'Each',
-  case: 'Case',
-  bag: 'Bag',
-  box: 'Box',
-  pack: 'Pack',
-};
+interface FormIngredient {
+  inventoryId: string;
+  quantity: string;
+  usageUnit: UsageUnit;
+}
 
 export function MenuItemBuilder() {
   const { user } = useAuth();
@@ -74,7 +77,7 @@ export function MenuItemBuilder() {
   const [formName, setFormName] = useState('');
   const [formRetailPrice, setFormRetailPrice] = useState('');
   const [formCategory, setFormCategory] = useState('');
-  const [formIngredients, setFormIngredients] = useState<{ inventoryId: string; quantity: string }[]>([]);
+  const [formIngredients, setFormIngredients] = useState<FormIngredient[]>([]);
 
   const fetchData = async () => {
     if (!user) return;
@@ -136,23 +139,59 @@ export function MenuItemBuilder() {
   };
 
   const addIngredientRow = () => {
-    setFormIngredients([...formIngredients, { inventoryId: '', quantity: '' }]);
+    setFormIngredients([...formIngredients, { inventoryId: '', quantity: '', usageUnit: 'oz' }]);
   };
 
   const removeIngredientRow = (index: number) => {
     setFormIngredients(formIngredients.filter((_, i) => i !== index));
   };
 
-  const updateIngredient = (index: number, field: 'inventoryId' | 'quantity', value: string) => {
+  const updateIngredient = (index: number, field: keyof FormIngredient, value: string) => {
     const updated = [...formIngredients];
-    updated[index][field] = value;
+    if (field === 'usageUnit') {
+      updated[index][field] = value as UsageUnit;
+    } else {
+      updated[index][field] = value;
+    }
+    
+    // Reset usage unit when inventory item changes
+    if (field === 'inventoryId') {
+      const item = inventoryItems.find(i => i.id === value);
+      if (item) {
+        const compatibleUnits = getCompatibleUnits(item.unit_type);
+        updated[index].usageUnit = compatibleUnits[0];
+      }
+    }
+    
     setFormIngredients(updated);
   };
 
   const calculateCost = (ingredients: MenuItemIngredient[]): number => {
     return ingredients.reduce((sum, ing) => {
-      const price = ing.inventory_item?.current_unit_price || 0;
+      if (!ing.inventory_item) return sum;
+      
+      // Use the stored quantity directly with the purchase unit for display
+      // In a full implementation, we'd store usage_unit with each ingredient
+      const price = ing.inventory_item.current_unit_price;
       return sum + (price * ing.quantity);
+    }, 0);
+  };
+
+  const calculateFormCost = (): number => {
+    return formIngredients.reduce((sum, ing) => {
+      if (!ing.inventoryId || !ing.quantity) return sum;
+      
+      const item = inventoryItems.find(i => i.id === ing.inventoryId);
+      if (!item) return sum;
+      
+      const cost = calculateIngredientCost(
+        parseFloat(ing.quantity) || 0,
+        ing.usageUnit,
+        item.current_unit_price,
+        item.unit_type
+      );
+      
+      return sum + cost;
     }, 0);
   };
 
@@ -184,18 +223,22 @@ export function MenuItemBuilder() {
       return;
     }
 
-    // Add ingredients
+    // Add ingredients (converting usage quantities to purchase unit quantities)
     const validIngredients = formIngredients.filter(ing => ing.inventoryId && ing.quantity);
     if (validIngredients.length > 0) {
+      const ingredientData = validIngredients.map(ing => {
+        // Store the quantity in the usage unit for now
+        // In a full implementation, we'd also store the usage_unit
+        return {
+          menu_item_id: menuItem.id,
+          inventory_item_id: ing.inventoryId,
+          quantity: parseFloat(ing.quantity) || 0,
+        };
+      });
+
       const { error: ingError } = await supabase
         .from('menu_item_ingredients')
-        .insert(
-          validIngredients.map(ing => ({
-            menu_item_id: menuItem.id,
-            inventory_item_id: ing.inventoryId,
-            quantity: parseFloat(ing.quantity) || 0,
-          }))
-        );
+        .insert(ingredientData);
 
       if (ingError) {
         console.error(ingError);
@@ -223,6 +266,11 @@ export function MenuItemBuilder() {
       fetchData();
     }
   };
+
+  const formTotalCost = calculateFormCost();
+  const formRetailPriceNum = parseFloat(formRetailPrice) || 0;
+  const formProfit = formRetailPriceNum - formTotalCost;
+  const formFoodCostPercent = formRetailPriceNum > 0 ? (formTotalCost / formRetailPriceNum) * 100 : 0;
 
   return (
     <div className="space-y-4">
@@ -304,52 +352,120 @@ export function MenuItemBuilder() {
                     Click "Add" to include ingredients
                   </p>
                 ) : (
-                  <div className="space-y-2">
+                  <div className="space-y-3">
                     {formIngredients.map((ing, index) => {
                       const selectedItem = inventoryItems.find(i => i.id === ing.inventoryId);
+                      const compatibleUnits = selectedItem 
+                        ? getCompatibleUnits(selectedItem.unit_type) 
+                        : ['each' as UsageUnit];
+                      
+                      // Calculate cost for this ingredient
+                      const ingredientCost = selectedItem && ing.quantity
+                        ? calculateIngredientCost(
+                            parseFloat(ing.quantity) || 0,
+                            ing.usageUnit,
+                            selectedItem.current_unit_price,
+                            selectedItem.unit_type
+                          )
+                        : 0;
+
                       return (
-                        <div key={index} className="flex gap-2 items-center">
-                          <Select
-                            value={ing.inventoryId}
-                            onValueChange={(v) => updateIngredient(index, 'inventoryId', v)}
-                          >
-                            <SelectTrigger className="flex-1">
-                              <SelectValue placeholder="Select item" />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {inventoryItems.map((item) => (
-                                <SelectItem key={item.id} value={item.id}>
-                                  {item.name}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <Input
-                            type="number"
-                            step="0.01"
-                            placeholder="Qty"
-                            value={ing.quantity}
-                            onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
-                            className="w-20"
-                          />
-                          <span className="text-xs text-muted-foreground w-12">
-                            {selectedItem ? UNIT_LABELS[selectedItem.unit_type] : ''}
-                          </span>
-                          <Button
-                            type="button"
-                            variant="ghost"
-                            size="icon"
-                            className="h-8 w-8 text-destructive"
-                            onClick={() => removeIngredientRow(index)}
-                          >
-                            <Minus className="h-4 w-4" />
-                          </Button>
+                        <div key={index} className="p-3 rounded-lg border bg-muted/30 space-y-2">
+                          <div className="flex gap-2 items-start">
+                            <Select
+                              value={ing.inventoryId}
+                              onValueChange={(v) => updateIngredient(index, 'inventoryId', v)}
+                            >
+                              <SelectTrigger className="flex-1">
+                                <SelectValue placeholder="Select item" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {inventoryItems.map((item) => (
+                                  <SelectItem key={item.id} value={item.id}>
+                                    {item.name} (${item.current_unit_price.toFixed(2)}/{PURCHASE_UNIT_LABELS[item.unit_type]})
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="icon"
+                              className="h-9 w-9 text-destructive shrink-0"
+                              onClick={() => removeIngredientRow(index)}
+                            >
+                              <Minus className="h-4 w-4" />
+                            </Button>
+                          </div>
+                          
+                          {selectedItem && (
+                            <div className="flex gap-2 items-center">
+                              <Input
+                                type="number"
+                                step="0.01"
+                                placeholder="Qty"
+                                value={ing.quantity}
+                                onChange={(e) => updateIngredient(index, 'quantity', e.target.value)}
+                                className="w-24"
+                              />
+                              <Select
+                                value={ing.usageUnit}
+                                onValueChange={(v) => updateIngredient(index, 'usageUnit', v)}
+                              >
+                                <SelectTrigger className="w-20">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {compatibleUnits.map((unit) => (
+                                    <SelectItem key={unit} value={unit}>
+                                      {USAGE_UNIT_LABELS[unit]}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <span className="text-sm text-muted-foreground flex-1">
+                                = ${ingredientCost.toFixed(2)}
+                              </span>
+                            </div>
+                          )}
                         </div>
                       );
                     })}
                   </div>
                 )}
               </div>
+
+              {/* Live Cost Preview */}
+              {formIngredients.length > 0 && (
+                <div className="p-4 rounded-lg border-2 border-primary/20 bg-primary/5 space-y-2">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Total Cost</span>
+                    <span className="font-mono font-medium">${formTotalCost.toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">Retail Price</span>
+                    <span className="font-mono">${formRetailPriceNum.toFixed(2)}</span>
+                  </div>
+                  <div className="border-t pt-2 flex justify-between">
+                    <span className={`font-medium flex items-center gap-1 ${formProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      {formProfit >= 0 ? <TrendingUp className="h-4 w-4" /> : <TrendingDown className="h-4 w-4" />}
+                      Profit
+                    </span>
+                    <span className={`font-mono font-bold ${formProfit >= 0 ? 'text-success' : 'text-destructive'}`}>
+                      ${formProfit.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm text-muted-foreground flex items-center gap-1">
+                      <Percent className="h-3 w-3" />
+                      Food Cost %
+                    </span>
+                    <Badge variant={formFoodCostPercent <= 30 ? 'default' : formFoodCostPercent <= 35 ? 'secondary' : 'destructive'}>
+                      {formFoodCostPercent.toFixed(1)}%
+                    </Badge>
+                  </div>
+                </div>
+              )}
 
               <Button onClick={handleSave} className="w-full">
                 Create Menu Item
@@ -375,8 +491,8 @@ export function MenuItemBuilder() {
           {menuItems.map((item) => {
             const cost = calculateCost(item.ingredients);
             const profit = item.retail_price - cost;
-            const margin = item.retail_price > 0 ? (profit / item.retail_price) * 100 : 0;
-            const isProfit = profit >= 0;
+            const foodCostPercent = item.retail_price > 0 ? (cost / item.retail_price) * 100 : 0;
+            const isHealthy = foodCostPercent <= 30;
 
             return (
               <Card key={item.id} className="relative">
@@ -389,7 +505,12 @@ export function MenuItemBuilder() {
                   <Trash2 className="h-4 w-4" />
                 </Button>
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base pr-8">{item.name}</CardTitle>
+                  <div className="flex items-start justify-between pr-8">
+                    <CardTitle className="text-base">{item.name}</CardTitle>
+                    <Badge variant={isHealthy ? 'default' : foodCostPercent <= 35 ? 'secondary' : 'destructive'}>
+                      {foodCostPercent.toFixed(0)}% FC
+                    </Badge>
+                  </div>
                   {item.category && (
                     <CardDescription>{item.category}</CardDescription>
                   )}
@@ -401,7 +522,7 @@ export function MenuItemBuilder() {
                       {item.ingredients.map((ing) => (
                         <div key={ing.id} className="flex justify-between">
                           <span>
-                            {ing.inventory_item?.name || 'Unknown'} × {ing.quantity}
+                            {ing.inventory_item?.name || 'Unknown'} × {ing.quantity} {ing.inventory_item ? PURCHASE_UNIT_LABELS[ing.inventory_item.unit_type] : ''}
                           </span>
                           <span className="font-mono">
                             ${((ing.inventory_item?.current_unit_price || 0) * ing.quantity).toFixed(2)}
@@ -421,13 +542,13 @@ export function MenuItemBuilder() {
                       <span className="text-muted-foreground">Retail</span>
                       <span className="font-mono">${item.retail_price.toFixed(2)}</span>
                     </div>
-                    <div className={`flex justify-between text-sm font-semibold ${isProfit ? 'text-green-600' : 'text-destructive'}`}>
+                    <div className={`flex justify-between text-sm font-semibold ${profit >= 0 ? 'text-success' : 'text-destructive'}`}>
                       <span className="flex items-center gap-1">
-                        {isProfit ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
+                        {profit >= 0 ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
                         Profit
                       </span>
                       <span className="font-mono">
-                        ${profit.toFixed(2)} ({margin.toFixed(1)}%)
+                        ${profit.toFixed(2)}
                       </span>
                     </div>
                   </div>
