@@ -1,4 +1,4 @@
-import { RefreshCw, Bell, Menu, Receipt } from 'lucide-react';
+import { RefreshCw, Bell, Menu, TrendingUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import StoreSwitcher from './StoreSwitcher';
 import UserMenu from './UserMenu';
@@ -26,9 +26,9 @@ const Header = ({ onMenuClick, onNavigate }: HeaderProps) => {
         {/* App Logo - Always visible */}
         <div className="flex items-center gap-2">
           <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center">
-            <Receipt className="w-5 h-5 text-primary-foreground" />
+            <TrendingUp className="w-5 h-5 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-foreground hidden sm:block">TaxTrack</span>
+          <span className="font-semibold text-foreground hidden sm:block">Margin Mind</span>
         </div>
 
         {/* Store Switcher - Hidden on very small screens */}

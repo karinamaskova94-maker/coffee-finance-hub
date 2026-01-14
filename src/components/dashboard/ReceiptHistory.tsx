@@ -125,9 +125,11 @@ const ReceiptHistory = () => {
           <p className="text-sm text-muted-foreground">Total Spent</p>
           <p className="text-xl font-bold text-foreground">${totalAmount.toFixed(2)}</p>
         </div>
-        <div className="p-4 rounded-xl bg-warning/5 border border-warning/10">
-          <p className="text-sm text-muted-foreground">Total Tax</p>
-          <p className="text-xl font-bold text-foreground">${totalTax.toFixed(2)}</p>
+        <div className="p-4 rounded-xl bg-success/5 border border-success/10">
+          <p className="text-sm text-muted-foreground">COGS Total</p>
+          <p className="text-xl font-bold text-foreground">
+            ${filteredReceipts.filter(r => r.is_food_item).reduce((sum, r) => sum + r.amount, 0).toFixed(2)}
+          </p>
         </div>
       </div>
 
@@ -169,13 +171,15 @@ const ReceiptHistory = () => {
                     )}
                     {receipt.is_food_item && (
                       <span className="text-xs px-2 py-0.5 rounded-full bg-success/10 text-success">
-                        Tax Exempt
+                        COGS
                       </span>
                     )}
                   </div>
-                  <span className="text-xs text-muted-foreground">
-                    Tax: ${receipt.tax_amount.toFixed(2)}
-                  </span>
+                  {receipt.is_food_item && (
+                    <span className="text-xs font-medium text-success">
+                      Food Cost
+                    </span>
+                  )}
                 </div>
               </div>
               <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />

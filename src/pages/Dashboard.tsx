@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { DollarSign, BarChart3, Landmark } from 'lucide-react';
+import { DollarSign, BarChart3, Percent } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
 import MetricCard from '@/components/dashboard/MetricCard';
@@ -54,9 +54,9 @@ const Dashboard = () => {
             <h2 className="text-lg font-semibold text-foreground mb-4">Reports</h2>
             <div className="grid gap-4">
               <div className="bg-card rounded-xl border border-border p-6">
-                <h3 className="font-medium text-foreground mb-2">Tax Summary Report</h3>
+                <h3 className="font-medium text-foreground mb-2">Profitability Report</h3>
                 <p className="text-sm text-muted-foreground mb-4">
-                  View your tax savings and liability breakdown by category.
+                  View your food cost percentages and margin analysis by menu item.
                 </p>
                 <div className="text-2xl font-bold text-primary">Coming Soon</div>
               </div>
@@ -116,11 +116,11 @@ const Dashboard = () => {
                 </MetricCard>
                 
                 <MetricCard
-                  title="Tax Liability"
-                  value="$3,840"
-                  subtitle="Sales Tax Collected — Not Your Money"
-                  icon={<Landmark className="w-5 h-5 text-warning" />}
-                  variant="warning"
+                  title="Food Cost %"
+                  value="28.5%"
+                  subtitle="Target: 25-30% for healthy margins"
+                  icon={<Percent className="w-5 h-5 text-success" />}
+                  variant="success"
                 />
               </div>
             </section>
