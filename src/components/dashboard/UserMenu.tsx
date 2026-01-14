@@ -63,8 +63,11 @@ const UserMenu = ({ onNavigate }: UserMenuProps) => {
               onClick={() => setMobileMenuOpen(false)}
             />
             
-            {/* Slide-up Action Sheet */}
-            <div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl safe-area-bottom animate-in slide-in-from-bottom duration-300">
+            {/* Slide-up Action Sheet - Positioned above bottom nav */}
+            <div 
+              className="absolute left-0 right-0 bg-white rounded-t-3xl animate-in slide-in-from-bottom duration-300"
+              style={{ bottom: 'calc(80px + env(safe-area-inset-bottom, 20px))' }}
+            >
               {/* Handle bar */}
               <div className="flex justify-center pt-3 pb-2">
                 <div className="w-10 h-1 bg-muted-foreground/30 rounded-full" />
@@ -130,8 +133,8 @@ const UserMenu = ({ onNavigate }: UserMenuProps) => {
                 </button>
               </div>
 
-              {/* Extra padding for home indicator */}
-              <div className="h-6" />
+              {/* Extra padding at bottom */}
+              <div className="h-4" />
             </div>
           </div>
         )}
