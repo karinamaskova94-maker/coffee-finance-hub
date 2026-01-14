@@ -42,6 +42,8 @@ interface InventoryItem {
   name: string;
   unit_type: PurchaseUnit;
   current_unit_price: number;
+  package_size: number;
+  package_price: number;
 }
 
 interface MenuItem {
