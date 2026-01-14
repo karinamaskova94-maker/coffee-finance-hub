@@ -122,6 +122,61 @@ export type Database = {
         }
         Relationships: []
       }
+      modifier_ingredients: {
+        Row: {
+          action: string
+          created_at: string
+          id: string
+          inventory_item_id: string
+          modifier_id: string
+          quantity: number
+          replaces_ingredient_id: string | null
+          usage_unit: string
+        }
+        Insert: {
+          action?: string
+          created_at?: string
+          id?: string
+          inventory_item_id: string
+          modifier_id: string
+          quantity?: number
+          replaces_ingredient_id?: string | null
+          usage_unit?: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          id?: string
+          inventory_item_id?: string
+          modifier_id?: string
+          quantity?: number
+          replaces_ingredient_id?: string | null
+          usage_unit?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "modifier_ingredients_inventory_item_id_fkey"
+            columns: ["inventory_item_id"]
+            isOneToOne: false
+            referencedRelation: "inventory_items"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modifier_ingredients_modifier_id_fkey"
+            columns: ["modifier_id"]
+            isOneToOne: false
+            referencedRelation: "recipe_modifiers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "modifier_ingredients_replaces_ingredient_id_fkey"
+            columns: ["replaces_ingredient_id"]
+            isOneToOne: false
+            referencedRelation: "menu_item_ingredients"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       receipt_item_mappings: {
         Row: {
           created_at: string
@@ -222,6 +277,44 @@ export type Database = {
             columns: ["store_id"]
             isOneToOne: false
             referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      recipe_modifiers: {
+        Row: {
+          created_at: string
+          id: string
+          is_default: boolean
+          menu_item_id: string
+          modifier_type: string
+          name: string
+          price_adjustment: number
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          menu_item_id: string
+          modifier_type?: string
+          name: string
+          price_adjustment?: number
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_default?: boolean
+          menu_item_id?: string
+          modifier_type?: string
+          name?: string
+          price_adjustment?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "recipe_modifiers_menu_item_id_fkey"
+            columns: ["menu_item_id"]
+            isOneToOne: false
+            referencedRelation: "menu_items"
             referencedColumns: ["id"]
           },
         ]
