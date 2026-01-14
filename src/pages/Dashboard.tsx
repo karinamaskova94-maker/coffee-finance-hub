@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { DollarSign, BarChart3, Percent, Camera, ClipboardList, TrendingUp } from 'lucide-react';
+import { DollarSign, BarChart3, Percent, ClipboardList, TrendingUp } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import Header from '@/components/dashboard/Header';
 import MetricCard from '@/components/dashboard/MetricCard';
@@ -11,6 +11,7 @@ import ReceiptHistory from '@/components/dashboard/ReceiptHistory';
 import SettingsPanel from '@/components/dashboard/SettingsPanel';
 import Inventory from '@/pages/Inventory';
 import { SundayCount } from '@/components/stocktake/SundayCount';
+import { TopModifiersChart } from '@/components/dashboard/TopModifiersChart';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { supabase } from '@/integrations/supabase/client';
@@ -228,6 +229,9 @@ const Dashboard = () => {
                 variant="success"
               />
             </div>
+
+            {/* Top Modifiers Chart */}
+            <TopModifiersChart />
 
             {/* Recent Activity */}
             <div>
