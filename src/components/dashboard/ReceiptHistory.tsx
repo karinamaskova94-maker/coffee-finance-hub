@@ -45,7 +45,7 @@ const ReceiptHistory = () => {
   const { user } = useAuth();
 
   const fetchReceipts = async () => {
-    if (!user || !currentStore) {
+    if (!user) {
       setIsLoading(false);
       return;
     }
@@ -56,7 +56,6 @@ const ReceiptHistory = () => {
       .from('receipts')
       .select('id, vendor_name, amount, tax_amount, category, receipt_date, status, is_food_item')
       .eq('user_id', user.id)
-      .eq('store_id', currentStore.id)
       .order('receipt_date', { ascending: false });
 
     if (categoryFilter !== 'all') {
@@ -76,7 +75,7 @@ const ReceiptHistory = () => {
 
   useEffect(() => {
     fetchReceipts();
-  }, [currentStore?.id, user?.id, categoryFilter]);
+  }, [user?.id, categoryFilter]);
 
   const filteredReceipts = receipts.filter(r =>
     r.vendor_name.toLowerCase().includes(searchQuery.toLowerCase())
