@@ -23,7 +23,7 @@ const Header = ({ onMenuClick }: HeaderProps) => {
         </Button>
         
         <div>
-          <h1 className="text-base sm:text-lg font-semibold text-foreground">{user?.shopName || 'Coffee Shop'}</h1>
+          <h1 className="text-base sm:text-lg font-semibold text-foreground">Sunrise Coffee Co.</h1>
           <p className="text-xs sm:text-sm text-muted-foreground hidden sm:block">Financial Overview</p>
         </div>
       </div>

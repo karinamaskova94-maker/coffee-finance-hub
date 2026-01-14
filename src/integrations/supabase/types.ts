@@ -14,7 +14,51 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      receipts: {
+        Row: {
+          amount: number
+          category: string | null
+          created_at: string
+          id: string
+          image_url: string | null
+          notes: string | null
+          receipt_date: string
+          status: string | null
+          tax_amount: number | null
+          updated_at: string
+          user_id: string
+          vendor_name: string
+        }
+        Insert: {
+          amount: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          receipt_date?: string
+          status?: string | null
+          tax_amount?: number | null
+          updated_at?: string
+          user_id: string
+          vendor_name: string
+        }
+        Update: {
+          amount?: number
+          category?: string | null
+          created_at?: string
+          id?: string
+          image_url?: string | null
+          notes?: string | null
+          receipt_date?: string
+          status?: string | null
+          tax_amount?: number | null
+          updated_at?: string
+          user_id?: string
+          vendor_name?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
