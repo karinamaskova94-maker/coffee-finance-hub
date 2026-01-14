@@ -10,7 +10,7 @@ interface HeaderProps {
 
 const Header = ({ onMenuClick, onNavigate }: HeaderProps) => {
   return (
-    <header className="h-16 border-b border-border bg-card flex items-center justify-between px-4 sm:px-6">
+    <header className="h-16 border-b-2 border-border bg-white flex items-center justify-between px-4 sm:px-6 sticky top-0 z-[100]">
       <div className="flex items-center gap-3">
         {/* Mobile menu button */}
         <Button
