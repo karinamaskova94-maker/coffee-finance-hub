@@ -21,9 +21,11 @@ export type Database = {
           created_at: string
           id: string
           image_url: string | null
+          is_food_item: boolean | null
           notes: string | null
           receipt_date: string
           status: string | null
+          store_id: string | null
           tax_amount: number | null
           updated_at: string
           user_id: string
@@ -35,9 +37,11 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_food_item?: boolean | null
           notes?: string | null
           receipt_date?: string
           status?: string | null
+          store_id?: string | null
           tax_amount?: number | null
           updated_at?: string
           user_id: string
@@ -49,13 +53,56 @@ export type Database = {
           created_at?: string
           id?: string
           image_url?: string | null
+          is_food_item?: boolean | null
           notes?: string | null
           receipt_date?: string
           status?: string | null
+          store_id?: string | null
           tax_amount?: number | null
           updated_at?: string
           user_id?: string
           vendor_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "receipts_store_id_fkey"
+            columns: ["store_id"]
+            isOneToOne: false
+            referencedRelation: "stores"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      stores: {
+        Row: {
+          address: string | null
+          created_at: string
+          id: string
+          is_default: boolean | null
+          name: string
+          state_tax_rate: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name: string
+          state_tax_rate?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          address?: string | null
+          created_at?: string
+          id?: string
+          is_default?: boolean | null
+          name?: string
+          state_tax_rate?: number | null
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
