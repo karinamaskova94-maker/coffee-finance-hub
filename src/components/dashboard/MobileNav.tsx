@@ -14,7 +14,8 @@ const navItems = [
 
 const MobileNav = ({ activeTab, onTabChange }: MobileNavProps) => {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 lg:hidden bg-card border-t border-border safe-area-bottom">
+    <nav className="fixed bottom-0 left-0 right-0 z-[9998] lg:hidden bg-white border-t-2 border-border shadow-[0_-4px_20px_rgba(0,0,0,0.08)]">
+      {/* Navigation items */}
       <div className="flex items-center justify-around h-16 px-1">
         {navItems.map((item) => {
           const isActive = activeTab === item.id;
@@ -24,24 +25,26 @@ const MobileNav = ({ activeTab, onTabChange }: MobileNavProps) => {
               onClick={() => onTabChange(item.id)}
               className={`
                 flex flex-col items-center justify-center flex-1 h-full gap-0.5 py-2
-                transition-colors duration-200 relative
+                transition-colors duration-200 relative min-w-[60px]
                 ${isActive 
                   ? 'text-primary' 
-                  : 'text-muted-foreground hover:text-foreground'
+                  : 'text-muted-foreground hover:text-foreground active:text-foreground'
                 }
               `}
             >
-              <item.icon className={`w-5 h-5 ${isActive ? 'stroke-[2.5px]' : ''}`} />
-              <span className={`text-[10px] sm:text-xs ${isActive ? 'font-semibold' : 'font-medium'}`}>
+              <item.icon className={`w-6 h-6 ${isActive ? 'stroke-[2.5px]' : ''}`} />
+              <span className={`text-[10px] ${isActive ? 'font-bold' : 'font-medium'}`}>
                 {item.label}
               </span>
               {isActive && (
-                <div className="absolute bottom-1 w-1 h-1 rounded-full bg-primary" />
+                <div className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-primary" />
               )}
             </button>
           );
         })}
       </div>
+      {/* Safe area padding for iPhone home indicator */}
+      <div className="h-[env(safe-area-inset-bottom,0px)] bg-white" />
     </nav>
   );
 };
