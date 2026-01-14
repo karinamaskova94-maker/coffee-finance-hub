@@ -1,7 +1,6 @@
-import { useState, useRef } from 'react';
+import { useState } from 'react';
 import { DollarSign, BarChart3, Percent, Menu, Settings, History, FileText } from 'lucide-react';
 import Sidebar from '@/components/dashboard/Sidebar';
-import Header from '@/components/dashboard/Header';
 import MetricCard from '@/components/dashboard/MetricCard';
 import RevenueChart from '@/components/dashboard/RevenueChart';
 import BenchmarkGauge from '@/components/dashboard/BenchmarkGauge';
@@ -23,7 +22,6 @@ import {
 const Dashboard = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [activeTab, setActiveTab] = useState('home');
-  const cameraInputRef = useRef<HTMLInputElement>(null);
 
   const handleNavigate = (tab: string) => {
     setActiveTab(tab);
