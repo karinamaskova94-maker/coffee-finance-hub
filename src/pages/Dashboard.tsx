@@ -1,0 +1,112 @@
+import { DollarSign, BarChart3, Landmark } from 'lucide-react';
+import Sidebar from '@/components/dashboard/Sidebar';
+import Header from '@/components/dashboard/Header';
+import MetricCard from '@/components/dashboard/MetricCard';
+import RevenueChart from '@/components/dashboard/RevenueChart';
+import BenchmarkGauge from '@/components/dashboard/BenchmarkGauge';
+import ReviewItem from '@/components/dashboard/ReviewItem';
+
+const Dashboard = () => {
+  return (
+    <div className="min-h-screen flex bg-background">
+      <Sidebar />
+      
+      <div className="flex-1 flex flex-col">
+        <Header />
+        
+        <main className="flex-1 p-6 overflow-auto">
+          {/* Top Row - Financial Pulse */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-foreground mb-4">Financial Pulse</h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <MetricCard
+                title="Net Profit"
+                value="$12,450"
+                subtitle="Clean of Sales Tax & Tips"
+                trend={{ value: 8.2, label: 'vs last week' }}
+                icon={<DollarSign className="w-5 h-5 text-primary" />}
+                variant="success"
+              />
+              
+              <MetricCard
+                title="Revenue Breakdown"
+                value=""
+                icon={<BarChart3 className="w-5 h-5 text-primary" />}
+              >
+                <RevenueChart />
+              </MetricCard>
+              
+              <MetricCard
+                title="Tax Liability"
+                value="$3,840"
+                subtitle="Sales Tax Collected — Not Your Money"
+                icon={<Landmark className="w-5 h-5 text-warning" />}
+                variant="warning"
+              />
+            </div>
+          </section>
+
+          {/* Middle Row - Benchmarks */}
+          <section className="mb-8">
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              The Learning Mentor — Industry Benchmarks
+            </h2>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <BenchmarkGauge
+                label="Labor Cost"
+                current={38}
+                target="30-35%"
+                hint="You are $240 over budget this week"
+                variant="warning"
+              />
+              
+              <BenchmarkGauge
+                label="COGS (F&B)"
+                current={26}
+                target="25-30%"
+                hint="Perfect margins!"
+                variant="success"
+              />
+              
+              <BenchmarkGauge
+                label="Rent & Occupancy"
+                current={18}
+                target="<15%"
+                hint="Rent is eating too much profit"
+                variant="danger"
+              />
+            </div>
+          </section>
+
+          {/* Bottom Row - Chaos Manager */}
+          <section>
+            <h2 className="text-lg font-semibold text-foreground mb-4">
+              The Chaos Manager — Needs Review
+            </h2>
+            <div className="space-y-4">
+              <ReviewItem
+                type="question"
+                title="Zelle to 'Ivan P.' ($400)"
+                description="Categorize this payment: Labor or Maintenance?"
+              />
+              
+              <ReviewItem
+                type="alert"
+                title="Costco Receipt Audit: $5.20 tax paid on Milk"
+                description="Alert: Check your Resale Certificate — you may be overpaying on exempt items."
+              />
+              
+              <ReviewItem
+                type="unmatched"
+                title="Unmatched Bank Expense: $85.00 at Starbucks Store"
+                description="This transaction doesn't match any known category or vendor."
+              />
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+  );
+};
+
+export default Dashboard;
