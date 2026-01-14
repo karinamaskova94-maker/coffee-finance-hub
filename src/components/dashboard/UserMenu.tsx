@@ -36,18 +36,25 @@ const UserMenu = ({ onNavigate }: UserMenuProps) => {
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <button className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20">
-          <Avatar className="w-8 h-8 sm:w-9 sm:h-9">
-            <AvatarFallback className="bg-primary/15 text-primary text-sm font-medium">
+        <button 
+          className="flex items-center gap-2 p-1.5 sm:p-2 rounded-xl hover:bg-accent transition-colors focus:outline-none focus:ring-2 focus:ring-primary/20 relative z-[9999]"
+          aria-label="User menu"
+        >
+          <Avatar className="w-9 h-9 sm:w-10 sm:h-10 border-2 border-foreground/20">
+            <AvatarFallback className="bg-foreground text-background text-sm font-bold">
               {getInitials()}
             </AvatarFallback>
           </Avatar>
         </button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent align="end" className="w-56">
+      <DropdownMenuContent 
+        align="end" 
+        className="w-56 z-[9999] bg-card border border-border shadow-lg"
+        sideOffset={8}
+      >
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">My Account</p>
+            <p className="text-sm font-medium leading-none text-foreground">My Account</p>
             <p className="text-xs leading-none text-muted-foreground truncate">
               {user?.email || 'Not signed in'}
             </p>
@@ -69,9 +76,9 @@ const UserMenu = ({ onNavigate }: UserMenuProps) => {
         <DropdownMenuSeparator />
         <DropdownMenuItem 
           onClick={handleLogout} 
-          className="cursor-pointer text-destructive focus:text-destructive focus:bg-destructive/10"
+          className="cursor-pointer text-red-600 font-semibold hover:text-red-700 hover:bg-red-50 focus:text-red-700 focus:bg-red-50"
         >
-          <LogOut className="mr-2 h-4 w-4" />
+          <LogOut className="mr-2 h-4 w-4 text-red-600" />
           <span>Log out</span>
         </DropdownMenuItem>
       </DropdownMenuContent>
